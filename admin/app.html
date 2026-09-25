@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vakil Admin Dashboard</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="app.css"></head>
+<body>
+<div class="app-shell">
+ <aside class="sidebar" id="sidebar">
+  <div class="logo"><span>V</span><div><b>Vakil Admin</b><small>CONTROL CENTER</small></div><button id="closeMenu">×</button></div>
+  <nav id="mainNav" aria-label="Admin navigation">
+   <a href="#dashboard" data-page="dashboard"><i>⌂</i>Main Dashboard</a>
+   <a href="#lawyers" data-page="lawyers"><i>♙</i>Lawyer Management</a>
+   <a href="#pricing" data-page="pricing"><i>₹</i>Lawyer Pricing Management</a>
+   <a href="#customers" data-page="customers"><i>♧</i>Customer Management</a>
+   <a href="#documents" data-page="documents"><i>▤</i>User Documents Management</a>
+   <a href="#video" data-page="video"><i>▶</i>Online Video System</a>
+   <a href="#appointments" data-page="appointments"><i>□</i>Admin Appointments</a>
+   <a href="#verification" data-page="verification"><i>✓</i>Lawyer Verify Management</a>
+   <a href="#content" data-page="content"><i>▣</i>Content Management</a>
+   <a href="#complaints" data-page="complaints"><i>!</i>Complaint &amp; Dispute Management</a>
+   <a href="#communication" data-page="communication"><i>✉</i>Communication &amp; Dispute Management</a>
+   <a href="#dashboard" data-page="dashboard"><i>▧</i>Dashboard Configuration</a>
+   <a href="#billing" data-page="billing"><i>₹</i>Billing and Revenue</a>
+   <a href="#reports" data-page="reports"><i>◫</i>Report and Analytics</a>
+  </nav>
+ </aside>
+ <div class="main-area">
+  <header class="topbar"><button class="menu-btn" id="menuBtn">☰</button><a href="#dashboard" class="product"><b>▣</b> LegalDash</a><div class="top-actions"><button id="notifyBtn" aria-label="Notifications">♟<span></span></button><div class="admin-menu"><button id="profileBtn"><span class="avatar">AG</span><span><b id="adminName">Admin User</b><small>Super Admin⌄</small></span></button><div class="profile-pop" id="profilePop"><button data-profile>Profile settings</button><button data-logout>Sign out</button></div></div></div></header>
+  <main id="content" tabindex="-1"></main>
+ </div>
+</div>
+<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true"><button class="modal-close" data-close>×</button><h2 id="modalTitle">Details</h2><div id="modalBody"></div><div class="modal-actions"><button class="btn light" data-close>Cancel</button><button class="btn primary" id="modalSave">Save changes</button></div></section></div>
+<div class="toast" id="appToast"></div><script src="app.js"></script></body></html>

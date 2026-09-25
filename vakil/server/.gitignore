@@ -1,0 +1,10 @@
+.env
+.local-mongodb/
+.local-vakil-db.js
+.local-vakil-db.cjs
+server-output.log
+server-error.log
+.local-vakil-db.json
+.local-vakil-db.json.tmp
+google-services.json
+*firebase-adminsdk*.json
