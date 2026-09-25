@@ -37,7 +37,9 @@ authRouter.post('/otp/request', async (req, res) => {
   if (!devMode) return res.status(503).json({ error: 'SMS verification is not available yet' });
   const phone = toE164(digits); const otps = getDb().collection('otps'); const now = new Date();
   if (await otps.findOne({ phone, role, createdAt: { $gt: new Date(now - 30000) } })) return res.status(429).json({ error: 'Please wait 30 seconds before requesting a new code' });
-  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+  // Testing: OTP_FIXED_CODE (e.g. 123456) is the code for every number, in both apps.
+  const fixed = /^\d{6}$/.test(process.env.OTP_FIXED_CODE || '') ? process.env.OTP_FIXED_CODE : null;
+  const code = fixed || String(crypto.randomInt(0, 1000000)).padStart(6, '0');
   await otps.deleteMany({ phone, role });
   await otps.insertOne({ phone, role, codeHash: otpHash(phone, role, code), attempts: 0, createdAt: now, expiresAt: new Date(now.getTime() + 5 * 60000) });
   console.log(`[OTP] ${role} ${phone}: ${code}`);
