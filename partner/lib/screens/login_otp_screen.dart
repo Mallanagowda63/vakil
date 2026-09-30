@@ -18,7 +18,7 @@ class LoginOtpScreen extends StatefulWidget {
 }
 
 class _LoginOtpScreenState extends State<LoginOtpScreen> {
-  final _mobileCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final List<TextEditingController> _otpCtrls = List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _otpFocus = List.generate(6, (_) => FocusNode());
 
@@ -33,7 +33,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
 
   @override
   void dispose() {
-    _mobileCtrl.dispose();
+    _emailCtrl.dispose();
     for (final c in _otpCtrls) {
       c.dispose();
     }
@@ -54,23 +54,20 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     });
   }
 
-  /// The 10-digit mobile number typed by the lawyer (+91 is added for them).
-  String get _mobile {
-    final digits = _mobileCtrl.text.replaceAll(RegExp(r'\D'), '');
-    return digits.length > 10 ? digits.substring(digits.length - 10) : digits;
-  }
+  /// The email address typed by the lawyer; the sign-in code is sent there.
+  String get _email => _emailCtrl.text.trim().toLowerCase();
 
   Future<void> _sendOtp() async {
-    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(_mobile)) {
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(_email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid 10-digit mobile number')),
+        const SnackBar(content: Text('Enter a valid email address')),
       );
       return;
     }
     setState(() => _sending = true);
     Map<String, dynamic> res;
     try {
-      res = await PartnerAuthService.instance.requestOtp(_mobile);
+      res = await PartnerAuthService.instance.requestOtp(_email);
     } on PartnerNetworkException catch (error) {
       if (!mounted) return;
       setState(() => _sending = false);
@@ -84,9 +81,9 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
       _otpError = null;
     });
     _startResendTimer();
-    // Development only: the server returns the code until SMS is connected.
+    // Development only: the server returns the code until email is connected.
     setState(() => _devCode = kDebugMode ? res['devCode']?.toString() : null);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Code sent to +91 $_mobile')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Code sent to $_email')));
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) FocusScope.of(context).requestFocus(_otpFocus.first);
     });
@@ -95,7 +92,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
   Future<void> _verifyOtp() async {
     final code = _otpCtrls.map((c) => c.text).join();
     if (code.length < 6) {
-      setState(() => _otpError = 'Enter the complete 6-digit OTP');
+      setState(() => _otpError = 'Enter the complete 6-digit code');
       return;
     }
     setState(() {
@@ -103,7 +100,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
       _otpError = null;
     });
     try {
-      await PartnerAuthService.instance.verifyOtp(_mobile, code);
+      await PartnerAuthService.instance.verifyOtp(_email, code);
     } on PartnerNetworkException catch (error) {
       if (!mounted) return;
       setState(() { _verifying = false; _otpError = error.message; });
@@ -176,31 +173,25 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
               const SizedBox(height: 8),
               Text(
                 _otpSent
-                    ? 'Enter the 6-digit code sent to +91 ${_mobileCtrl.text}'
-                    : "Enter your registered mobile number and we'll send a 6-digit OTP to complete sign-in.",
+                    ? 'Enter the 6-digit code sent to $_email. Check your inbox (and the spam folder).'
+                    : "Enter your email address and we'll email you a 6-digit code to complete sign-in.",
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5, height: 1.45),
               ),
               const SizedBox(height: 28),
               if (!_otpSent) ...[
-                const Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                const Text('Email Address', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
                 const SizedBox(height: 6),
                 TextField(
-                  controller: _mobileCtrl,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
                   decoration: const InputDecoration(
-                    prefixIcon: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Center(
-                        widthFactor: 1,
-                        child: Text('+91', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5)),
-                      ),
-                    ),
-                    hintText: '98765 43210',
+                    prefixIcon: Icon(Icons.email_outlined),
+                    hintText: 'name@example.com',
                   ),
                 ),
                 const SizedBox(height: 22),
-                PrimaryButton(label: 'Send OTP', loading: _sending, onPressed: _sending ? null : _sendOtp),
+                PrimaryButton(label: 'Send code', loading: _sending, onPressed: _sending ? null : _sendOtp),
                 Center(
                   child: TextButton.icon(
                     onPressed: () => showFindServerDialog(context),
@@ -242,12 +233,12 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                   alignment: Alignment.centerRight,
                   child: _resendSeconds > 0
                       ? Text(
-                          'Resend OTP in 0:${_resendSeconds.toString().padLeft(2, '0')}',
+                          'Resend code in 0:${_resendSeconds.toString().padLeft(2, '0')}',
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
                         )
                       : TextButton(
                           onPressed: _sendOtp,
-                          child: const Text('Resend OTP'),
+                          child: const Text('Resend code'),
                         ),
                 ),
                 const SizedBox(height: 12),

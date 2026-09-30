@@ -126,7 +126,7 @@ adminRouter.get('/lawyers', async (_req, res) => {
     const answered = mine.filter((r) => r.acceptedAt || r.rejectedAt);
     const rated = reviews.filter((r) => idOf(r.lawyerId) === id && !r.hidden);
     return {
-      id, name: nameOf(lawyer, 'Lawyer'), phone: lawyer.phone || null, photoUrl: lawyer.profile?.photoUrl || null, categories: lawyer.categories || [], city: lawyer.registration?.advocate?.city || null,
+      id, name: nameOf(lawyer, 'Lawyer'), phone: lawyer.phone || null, email: lawyer.email || lawyer.registration?.personal?.email || null, photoUrl: lawyer.profile?.photoUrl || null, categories: lawyer.categories || [], city: lawyer.registration?.advocate?.city || null,
       approved: Boolean(lawyer.approved), blocked: Boolean(lawyer.blocked), verificationStatus: verificationStatusOf(lawyer), online: isAvailable(lawyer), appConnected: Boolean(lawyer.connected), lastSeenAt: lawyer.lastSeenAt || null, createdAt: lawyer.createdAt || null,
       featured: Boolean(lawyer.featured), channels: { chat: lawyer.channels?.chat !== false, call: lawyer.channels?.call !== false }, rate: lawyer.ratePerMinute ?? pricing.chatPerMinute, rateOverridden: lawyer.ratePerMinute != null, commissionOverride: lawyer.commissionOverride ?? null,
       totalRequests: mine.length, accepted: mine.filter((r) => r.acceptedAt).length, consultations: mine.filter((r) => r.status === 'COMPLETED').length,
@@ -178,7 +178,7 @@ adminRouter.get('/users', async (req, res) => {
   let items = users.map((u) => {
     const id = u._id.toString();
     return {
-      id, name: nameOf(u, 'Client'), phone: u.phone || null, email: u.profile?.email || null, language: u.profile?.language || null, trialUsed: Boolean(u.trialUsed), blocked: Boolean(u.blocked), riskLevel: u.riskLevel || 'low', riskNote: u.riskNote || '', online: Boolean(u.connected), lastSeenAt: u.lastSeenAt || null, createdAt: u.createdAt || null,
+      id, name: nameOf(u, 'Client'), phone: u.phone || null, email: u.email || u.profile?.email || null, language: u.profile?.language || null, trialUsed: Boolean(u.trialUsed), blocked: Boolean(u.blocked), riskLevel: u.riskLevel || 'low', riskNote: u.riskNote || '', online: Boolean(u.connected), lastSeenAt: u.lastSeenAt || null, createdAt: u.createdAt || null,
       chats: requests.filter((r) => idOf(r.userId) === id && ['ONGOING', 'COMPLETED'].includes(r.status)).length, requests: requests.filter((r) => idOf(r.userId) === id).length,
       calls: calls.filter((c) => idOf(c.callerId) === id || idOf(c.receiverId) === id).length,
       walletBalance: Math.round((u.walletBalance || 0) * 100) / 100, walletEntries: wallet.filter((t) => idOf(t.accountId) === id).length,

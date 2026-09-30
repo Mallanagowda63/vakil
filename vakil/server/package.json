@@ -20,6 +20,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongo-mock": "^4.2.0",
     "mongodb": "^6.9.0",
+    "nodemailer": "^7.0.13",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

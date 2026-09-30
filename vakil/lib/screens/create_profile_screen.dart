@@ -11,9 +11,10 @@ import '../widgets/app_widgets.dart';
 import 'legal_help_start_screen.dart';
 
 class CreateProfileScreen extends StatefulWidget {
-  const CreateProfileScreen({super.key, this.phoneNumber});
+  const CreateProfileScreen({super.key, this.email});
 
-  final String? phoneNumber;
+  /// The email the user signed in with; it can't be changed here.
+  final String? email;
 
   @override
   State<CreateProfileScreen> createState() => _CreateProfileScreenState();
@@ -22,16 +23,16 @@ class CreateProfileScreen extends StatefulWidget {
 class _CreateProfileScreenState extends State<CreateProfileScreen> {
   late final _nameController = TextEditingController();
   late final _languageController = TextEditingController();
-  late final _phoneController =
-      TextEditingController(text: widget.phoneNumber ?? '');
+  late final _phoneController = TextEditingController();
   late final _aadhaarController = TextEditingController();
-  late final _emailController = TextEditingController();
+  late final _emailController =
+      TextEditingController(text: widget.email ?? AuthService.instance.email ?? '');
   late final _sosNameController = TextEditingController();
 
   String? _gender;
   /// Optional; uploaded right after the profile is saved.
   XFile? _photo;
-  bool _phoneLocked = true;
+  bool get _emailLocked => (widget.email ?? AuthService.instance.email) != null;
   bool _saving = false;
 
   @override
@@ -65,6 +66,11 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
       _showSnack('Enter a valid email address');
       return;
     }
+    final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    if (phoneDigits.isNotEmpty && !RegExp(r'^(91)?[6-9]\d{9}$').hasMatch(phoneDigits)) {
+      _showSnack('Enter a valid 10-digit mobile number, or leave it empty');
+      return;
+    }
 
     setState(() => _saving = true);
     try {
@@ -75,6 +81,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
         aadhaar: _aadhaarController.text.trim(),
         email: _emailController.text.trim(),
         sosContact: _sosNameController.text.trim(),
+        phone: phoneDigits,
       );
       final photo = _photo;
       if (photo != null) {
@@ -205,17 +212,13 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                 hint: 'e.g. Hindi, English, Tamil',
               ),
               const SizedBox(height: 18),
-              FieldLabel('PHONE NUMBER'),
+              FieldLabel('MOBILE NUMBER (optional)'),
               const SizedBox(height: 8),
               EditableField(
                 icon: Icons.phone_outlined,
                 controller: _phoneController,
-                hint: '+91 98765 43210',
+                hint: '98765 43210',
                 keyboardType: TextInputType.phone,
-                readOnly: _phoneLocked,
-                trailing: EditLink(
-                  onTap: () => setState(() => _phoneLocked = !_phoneLocked),
-                ),
               ),
               const SizedBox(height: 26),
               Text('PROFILE REQUIREMENTS',
@@ -274,13 +277,15 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                     : null,
               ),
               const SizedBox(height: 18),
-              FieldLabel('EMAIL ADDRESS'),
+              FieldLabel('EMAIL ADDRESS${_emailLocked ? ' (sign-in email)' : ''}'),
               const SizedBox(height: 8),
               EditableField(
                 icon: Icons.mail_outline,
                 controller: _emailController,
                 hint: 'name@example.com',
                 keyboardType: TextInputType.emailAddress,
+                readOnly: _emailLocked,
+                trailing: _emailLocked ? const Icon(Icons.lock_outline, size: 16, color: AppColors.textGraySoft) : null,
               ),
               const SizedBox(height: 22),
               Container(

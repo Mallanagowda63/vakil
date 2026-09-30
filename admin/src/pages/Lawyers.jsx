@@ -13,7 +13,7 @@ export default function Lawyers() {
   const status = params.get('status') || ''; const selected = params.get('id');
   const all = data?.items;
   const specialties = useMemo(() => [...new Set((all || []).flatMap((l) => l.categories))].sort(), [all]);
-  const rows = all?.filter((l) => (!status || l.verificationStatus === status) && (!specialty || l.categories.includes(specialty)) && (!presence || (presence === 'online' ? l.online : !l.online)) && `${l.name} ${l.phone} ${l.city || ''}`.toLowerCase().includes(q.toLowerCase()));
+  const rows = all?.filter((l) => (!status || l.verificationStatus === status) && (!specialty || l.categories.includes(specialty)) && (!presence || (presence === 'online' ? l.online : !l.online)) && `${l.name} ${l.phone} ${l.email || ''} ${l.city || ''}`.toLowerCase().includes(q.toLowerCase()));
   const count = (s) => all?.filter((l) => l.verificationStatus === s).length ?? 0;
   const rated = all?.filter((l) => l.ratingAverage !== null) || [];
   const avgRating = rated.length ? rated.reduce((n, l) => n + l.ratingAverage, 0) / rated.length : null;

@@ -23,7 +23,7 @@ const text = (v, max = 120) => String(v ?? '').trim().slice(0, max);
 // registration plus the photo. A lawyer's registration adds practice details.
 export function profileView(account, role) {
   const p = account.profile || {}; const reg = account.registration || {};
-  const base = { id: account._id.toString(), role, phone: account.phone || null, fullName: p.fullName || reg.personal?.fullName || '', email: p.email || reg.personal?.email || '', gender: p.gender || reg.personal?.gender || '', photoUrl: p.photoUrl || null };
+  const base = { id: account._id.toString(), role, phone: account.phone || null, fullName: p.fullName || reg.personal?.fullName || '', email: account.email || p.email || reg.personal?.email || '', gender: p.gender || reg.personal?.gender || '', photoUrl: p.photoUrl || null };
   if (role !== 'lawyer') return { ...base, language: p.language || '', aadhaar: p.aadhaar || '', sosContact: p.sosContact || '' };
   const a = reg.advocate || {};
   return {
@@ -53,13 +53,36 @@ async function setProfile(req, fields) {
   return col.findOne({ _id: req.user._id });
 }
 
+// Accounts sign in with their email, so the profile email always equals it.
+// The mobile number is optional contact info (Admin Panel, payments), one
+// account per number. Returns [status, error] when a field is not accepted.
+async function checkContact(req, fields) {
+  if (req.user.email && 'email' in fields) {
+    if (fields.email && fields.email.toLowerCase() !== req.user.email) return [400, 'Your sign-in email cannot be changed'];
+    fields.email = req.user.email;
+  }
+  if (!String(req.body.phone ?? '').trim()) return null;
+  const digits = String(req.body.phone).replace(/\D/g, '').slice(-10);
+  if (!/^[6-9]\d{9}$/.test(digits)) return [400, 'Enter a valid 10-digit mobile number'];
+  const phone = `+91${digits}`;
+  if (phone === req.user.phone) return null;
+  const col = getDb().collection(collectionOf(req));
+  if (await col.findOne({ phone, _id: { $ne: req.user._id } })) return [409, 'This mobile number is already used by another account'];
+  await col.updateOne({ _id: req.user._id }, { $set: { phone } });
+  return null;
+}
+
 profileRouter.get('/', requireAuth, (req, res) => res.json({ profile: profileView(req.user, req.auth.role) }));
 
 // POST /api/profile — the User App's "Create profile" step (all fields required).
 profileRouter.post('/', requireAuth, async (req, res) => {
-  const { fullName, language, gender, aadhaar, email, sosContact } = req.body;
+  const { fullName, language, gender, aadhaar, sosContact } = req.body;
+  const email = text(req.body.email) || req.user.email;
   if (!fullName || !gender || !aadhaar || !email) return res.status(400).json({ error: 'Missing required profile fields' });
-  const account = await setProfile(req, { fullName: text(fullName), language: text(language), gender: text(gender, 20), aadhaar: text(aadhaar, 20), email: text(email), sosContact: text(sosContact) });
+  const fields = { fullName: text(fullName), language: text(language), gender: text(gender, 20), aadhaar: text(aadhaar, 20), email, sosContact: text(sosContact) };
+  const problem = await checkContact(req, fields);
+  if (problem) return res.status(problem[0]).json({ error: problem[1] });
+  const account = await setProfile(req, fields);
   res.json({ profile: account.profile, view: profileView(account, req.auth.role) });
 });
 
@@ -72,6 +95,8 @@ profileRouter.patch('/', requireAuth, async (req, res) => {
   if ('fullName' in fields && !fields.fullName) return res.status(400).json({ error: 'Name cannot be empty' });
   if ('email' in fields && fields.email && !/^\S+@\S+\.\S+$/.test(fields.email)) return res.status(400).json({ error: 'Enter a valid email address' });
   if ('aadhaar' in fields && fields.aadhaar && fields.aadhaar.replace(/\s/g, '').length !== 12) return res.status(400).json({ error: 'Aadhaar number must have 12 digits' });
+  const problem = await checkContact(req, fields);
+  if (problem) return res.status(problem[0]).json({ error: problem[1] });
   const account = await setProfile(req, fields);
   // A lawyer's registration holds the name the Admin Panel verifies; keep it the same.
   if (req.auth.role === 'lawyer' && account.registration?.personal && ('fullName' in fields || 'email' in fields)) {

@@ -36,7 +36,7 @@ class RegistrationSync {
       await PartnerConsultationService().submitRegistration(token, Map<String, dynamic>.from(jsonDecode(saved) as Map));
       await prefs.remove(_key);
     } on PartnerNetworkException catch (error) {
-      // 409: filled in for another mobile number; 400: incomplete. Don't retry those.
+      // 409: filled in for another email address; 400: incomplete. Don't retry those.
       if (error.statusCode == 409 || error.statusCode == 400) await (await SharedPreferences.getInstance()).remove(_key);
       debugPrint('Registration not sent: ${error.message}');
     } catch (error) {

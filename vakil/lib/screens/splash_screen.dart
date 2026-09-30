@@ -8,8 +8,8 @@ import 'login_otp_screen.dart';
 
 /// The single app entry point. Resolves the persisted session (backed by
 /// the Vakil API + MongoDB) and routes straight to wherever the user left
-/// off: sign in, finish their profile, use their free chat, or — once
-/// that's spent — the full home dashboard.
+/// off: sign in, finish their profile, use their free chat, or â€” once
+/// that's spent â€” the full home dashboard.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -41,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!auth.isLoggedIn) {
       next = const LoginOtpScreen();
     } else if (!auth.profileComplete) {
-      next = CreateProfileScreen(phoneNumber: auth.phone);
+      next = CreateProfileScreen(email: auth.email);
     } else if (!auth.trialUsed) {
       next = const LegalHelpStartScreen();
     } else {

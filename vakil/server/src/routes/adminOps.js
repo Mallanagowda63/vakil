@@ -158,7 +158,7 @@ adminOpsRouter.get('/lawyers/:id', run(async (req) => {
   const visibleReviews = reviews.filter((r) => !r.hidden); const reg = lawyer.registration || {};
   return {
     lawyer: {
-      id: lawyer._id.toString(), name: nameOf(lawyer, 'Lawyer'), phone: lawyer.phone || null, email: reg.personal?.email || lawyer.profile?.email || null, photoUrl: lawyer.profile?.photoUrl || null,
+      id: lawyer._id.toString(), name: nameOf(lawyer, 'Lawyer'), phone: lawyer.phone || null, email: lawyer.email || reg.personal?.email || lawyer.profile?.email || null, photoUrl: lawyer.profile?.photoUrl || null,
       categories: lawyer.categories || [], approved: Boolean(lawyer.approved), blocked: Boolean(lawyer.blocked), verificationStatus: verificationStatusOf(lawyer), verificationNotes: lawyer.verificationNotes || '', approvedAt: lawyer.approvedAt || null, approvedBy: lawyer.approvedBy || null,
       online: Boolean(lawyer.online), appConnected: Boolean(lawyer.connected), lastSeenAt: lawyer.lastSeenAt || null, createdAt: lawyer.createdAt || null,
       featured: Boolean(lawyer.featured), recommended: Boolean(lawyer.recommended), channels: { chat: lawyer.channels?.chat !== false, call: lawyer.channels?.call !== false },

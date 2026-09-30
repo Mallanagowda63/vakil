@@ -14,12 +14,12 @@ class PartnerNetworkException implements Exception {
   @override String toString() => message;
 }
 
-/// Lawyer sign-in with the registered +91 mobile number and a 6-digit OTP.
+/// Lawyer sign-in with an email address and a 6-digit code sent to it.
 class PartnerAuthService {
   PartnerAuthService._();
   static final instance = PartnerAuthService._();
   String? token;
-  String? phone;
+  String? email;
 
   /// Restores a saved session; false means the lawyer must sign in again.
   Future<bool> restore() async {
@@ -29,7 +29,7 @@ class PartnerAuthService {
       if (saved == null) return false;
       final res = await _call('GET', '/api/auth/session', token: saved);
       token = saved;
-      phone = (res['user'] as Map?)?['phone']?.toString() ?? prefs.getString('partner_phone');
+      email = (res['user'] as Map?)?['email']?.toString() ?? prefs.getString('partner_email');
       RealtimeService.instance.connect(saved);
       return true;
     } on PartnerNetworkException catch (error) {
@@ -40,26 +40,27 @@ class PartnerAuthService {
     }
   }
 
-  /// Sends the code. In development (no SMS provider yet) the reply includes it as devCode.
-  Future<Map<String, dynamic>> requestOtp(String mobile) => _call('POST', '/api/auth/otp/request', body: {'phone': mobile, 'role': 'lawyer'});
+  /// Emails the code. In development (no email service yet) the reply includes it as devCode.
+  Future<Map<String, dynamic>> requestOtp(String email) => _call('POST', '/api/auth/otp/request', body: {'email': email, 'role': 'lawyer'});
 
-  Future<void> verifyOtp(String mobile, String code) async {
-    final res = await _call('POST', '/api/auth/otp/verify', body: {'phone': mobile, 'role': 'lawyer', 'code': code});
+  Future<void> verifyOtp(String email, String code) async {
+    final res = await _call('POST', '/api/auth/otp/verify', body: {'email': email, 'role': 'lawyer', 'code': code});
     token = res['token'] as String;
-    phone = (res['user'] as Map?)?['phone']?.toString() ?? '+91$mobile';
+    this.email = (res['user'] as Map?)?['email']?.toString() ?? email;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('partner_auth_token', token!);
-    await prefs.setString('partner_phone', phone!);
+    await prefs.setString('partner_email', this.email!);
     RealtimeService.instance.connect(token!);
   }
 
   Future<void> logout() async {
     token = null;
-    phone = null;
+    email = null;
     RealtimeService.instance.disconnect();
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('partner_auth_token');
+      await prefs.remove('partner_email');
       await prefs.remove('partner_phone');
     } catch (_) {}
   }

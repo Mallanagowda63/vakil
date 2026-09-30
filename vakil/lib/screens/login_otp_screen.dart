@@ -22,7 +22,7 @@ class LoginOtpScreen extends StatefulWidget {
 }
 
 class _LoginOtpScreenState extends State<LoginOtpScreen> {
-  final _mobileController = TextEditingController();
+  final _emailController = TextEditingController();
   final _codeController = TextEditingController();
   Timer? _resendTimer;
   int _resendIn = 0;
@@ -36,7 +36,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
 
   @override
   void dispose() {
-    _mobileController.dispose();
+    _emailController.dispose();
     _codeController.dispose();
     _resendTimer?.cancel();
     _termsTap.dispose();
@@ -56,25 +56,22 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     );
   }
 
-  /// 10-digit Indian mobile number typed by the user (+91 is added for them).
-  String get _mobile {
-    final digits = _mobileController.text.replaceAll(RegExp(r'\D'), '');
-    return digits.length > 10 ? digits.substring(digits.length - 10) : digits;
-  }
+  /// The email address typed by the user; the sign-in code is sent there.
+  String get _email => _emailController.text.trim().toLowerCase();
 
   Future<void> _sendCode() async {
-    final mobile = _mobile;
-    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(mobile)) {
-      _showSnack('Enter a valid 10-digit mobile number');
+    final email = _email;
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+      _showSnack('Enter a valid email address');
       return;
     }
     setState(() => _loading = true);
     try {
-      final res = await AuthService.instance.requestOtp(mobile);
+      final res = await AuthService.instance.requestOtp(email);
       if (!mounted) return;
       setState(() {
-        _codeSentTo = mobile;
-        // Development only: the server returns the code until SMS is connected.
+        _codeSentTo = email;
+        // Development only: the server returns the code until email is connected.
         _devCode = kDebugMode ? res['devCode']?.toString() : null;
         _codeController.clear();
       });
@@ -101,7 +98,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
 
   Future<void> _continue() async {
     if (_codeSentTo == null) return _sendCode();
-    final mobile = _codeSentTo!;
+    final email = _codeSentTo!;
     final code = _codeController.text.trim();
     if (!RegExp(r'^\d{6}$').hasMatch(code)) {
       _showSnack('Enter the 6-digit code');
@@ -110,13 +107,13 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
 
     setState(() => _loading = true);
     try {
-      await AuthService.instance.verifyOtp(mobile, code);
+      await AuthService.instance.verifyOtp(email, code);
       if (!mounted) return;
 
       final auth = AuthService.instance;
       final Widget next;
       if (!auth.profileComplete) {
-        next = CreateProfileScreen(phoneNumber: '+91$mobile');
+        next = CreateProfileScreen(email: email);
       } else if (!auth.trialUsed) {
         next = const LegalHelpStartScreen();
       } else {
@@ -157,22 +154,26 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
               Text('Sign In', style: AppText.h1(AppColors.textWhite)),
               const SizedBox(height: 6),
               Text(
-                'Enter your mobile number to complete secure sign in.',
+                'Enter your email address. We will email you a 6-digit code to sign in.',
                 style: AppText.body(AppColors.textMuted),
               ),
               const SizedBox(height: 22),
-              FieldLabel('MOBILE NUMBER (+91)'),
+              FieldLabel('EMAIL ADDRESS'),
               const SizedBox(height: 8),
               EditableField(
-                icon: Icons.phone_outlined,
-                controller: _mobileController,
-                hint: '98765 43210',
+                icon: Icons.mail_outline,
+                controller: _emailController,
+                hint: 'name@example.com',
                 dark: true,
-                keyboardType: TextInputType.phone,
+                keyboardType: TextInputType.emailAddress,
               ),
               if (_codeSentTo != null) ...[
                 const SizedBox(height: 16),
-                FieldLabel('6-DIGIT CODE SENT TO +91 $_codeSentTo'),
+                FieldLabel('6-DIGIT CODE SENT TO $_codeSentTo'),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('Check your inbox (and the spam folder).', style: AppText.bodySmall(AppColors.textMuted)),
+                ),
                 const SizedBox(height: 8),
                 EditableField(
                   icon: Icons.lock_outline,

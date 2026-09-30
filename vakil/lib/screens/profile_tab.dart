@@ -68,7 +68,7 @@ class _ProfileTabState extends State<ProfileTab> {
     _languageController.text = p.language;
     _phoneController.text = p.phone.isNotEmpty ? p.phone : AuthService.instance.phone ?? '';
     _aadhaarController.text = p.aadhaar;
-    _emailController.text = p.email;
+    _emailController.text = p.email.isNotEmpty ? p.email : AuthService.instance.email ?? '';
     _sosController.text = p.sosContact;
     _gender = p.gender;
   }
@@ -87,7 +87,7 @@ class _ProfileTabState extends State<ProfileTab> {
         'language': _languageController.text.trim(),
         'gender': _gender,
         'aadhaar': _aadhaarController.text.trim(),
-        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
         'sosContact': _sosController.text.trim(),
       });
       if (!mounted) return;
@@ -211,9 +211,9 @@ class _ProfileTabState extends State<ProfileTab> {
               const SizedBox(height: 8),
               EditableField(icon: Icons.language, controller: _languageController, hint: 'e.g. Hindi, English, Tamil'),
               const SizedBox(height: 18),
-              FieldLabel('PHONE NUMBER (sign-in number)'),
+              FieldLabel('MOBILE NUMBER'),
               const SizedBox(height: 8),
-              EditableField(icon: Icons.phone_outlined, controller: _phoneController, hint: '+91', readOnly: true, trailing: const Icon(Icons.lock_outline, size: 16, color: AppColors.textGraySoft)),
+              EditableField(icon: Icons.phone_outlined, controller: _phoneController, hint: '98765 43210', keyboardType: TextInputType.phone),
               const SizedBox(height: 18),
               FieldLabel('GENDER'),
               const SizedBox(height: 8),
@@ -235,9 +235,9 @@ class _ProfileTabState extends State<ProfileTab> {
                 trailing: _aadhaarValid ? const Icon(Icons.check_circle, size: 16, color: AppColors.greenAccent) : null,
               ),
               const SizedBox(height: 18),
-              FieldLabel('EMAIL ADDRESS'),
+              FieldLabel('EMAIL ADDRESS (sign-in email)'),
               const SizedBox(height: 8),
-              EditableField(icon: Icons.mail_outline, controller: _emailController, hint: 'name@example.com', keyboardType: TextInputType.emailAddress),
+              EditableField(icon: Icons.mail_outline, controller: _emailController, hint: 'name@example.com', readOnly: true, trailing: const Icon(Icons.lock_outline, size: 16, color: AppColors.textGraySoft)),
               const SizedBox(height: 18),
               FieldLabel('EMERGENCY (SOS) CONTACT'),
               const SizedBox(height: 8),

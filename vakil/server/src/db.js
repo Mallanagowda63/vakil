@@ -129,6 +129,21 @@ let db;
 // True only after start-up work is done; the API and sockets wait for it.
 let ready = false;
 
+// createIndex fails when an index with the same keys but other options exists
+// (users.phone was unique but not sparse): replace it in that case.
+async function ensureIndex(collection, keys, options) {
+  // mongo-mock ignores `sparse`, so a unique sparse index would reject every
+  // second account without that field; the real server enforces it.
+  if (process.env.USE_MONGO_MOCK === 'true' && options.sparse) return;
+  try {
+    await collection.createIndex(keys, options);
+  } catch (error) {
+    if (error.code !== 85 && error.code !== 86) throw error;
+    await collection.dropIndex(Object.entries(keys).map(([k, v]) => `${k}_${v}`).join('_'));
+    await collection.createIndex(keys, options);
+  }
+}
+
 export async function connectDb() {
   if (db) return db;
   if (process.env.USE_MONGO_MOCK === 'true') {
@@ -156,8 +171,11 @@ export async function connectDb() {
   await client.connect();
   db = client.db();
   }
-  await db.collection('users').createIndex({ phone: 1 }, { unique: true });
-  await db.collection('lawyers').createIndex({ phone: 1 }, { unique: true, sparse: true });
+  // Accounts sign in by email; the phone number is optional contact info.
+  for (const name of ['users', 'lawyers']) {
+    await ensureIndex(db.collection(name), { phone: 1 }, { unique: true, sparse: true });
+    await ensureIndex(db.collection(name), { email: 1 }, { unique: true, sparse: true });
+  }
   await db.collection('consultation_requests').createIndex({ userId: 1, status: 1 });
   await db.collection('consultation_requests').createIndex({ lawyerId: 1, status: 1 });
   await db.collection('consultation_requests').createIndex({ expiresAt: 1, status: 1 });
@@ -169,7 +187,7 @@ export async function connectDb() {
   await db.collection('messages').createIndex({ requestId: 1, senderId: 1, clientId: 1 });
   await db.collection('calls').createIndex({ requestId: 1, startedAt: -1 });
   await db.collection('calls').createIndex({ status: 1, startedAt: 1 });
-  await db.collection('otps').createIndex({ phone: 1 });
+  await db.collection('otps').createIndex({ email: 1, role: 1 });
   await db
     .collection('otps')
     .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });

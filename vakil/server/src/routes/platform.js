@@ -61,17 +61,20 @@ platformRouter.post('/lawyers/me/registration', ...roles('lawyer'), async (req, 
   const text = (v, max = 120) => String(v ?? '').trim().slice(0, max);
   const { personal = {}, advocate = {}, bank = {} } = req.body;
   if (!text(personal.fullName) || !text(advocate.barCouncilRegNo)) return res.status(400).json({ error: 'Full name and Bar Council registration number are required' });
-  // Filled in before sign-in on this phone: it must belong to the number that signed in.
-  const last10 = (v) => String(v || '').replace(/\D/g, '').slice(-10);
-  if (personal.mobile && last10(personal.mobile) !== last10(req.user.phone)) return res.status(409).json({ error: 'This registration was filled in for a different mobile number' });
+  // Filled in before sign-in on this phone: it must belong to the email that signed in.
+  const email = text(personal.email).toLowerCase();
+  if (email && req.user.email && email !== req.user.email) return res.status(409).json({ error: 'This registration was filled in for a different email address' });
+  // The mobile number becomes the lawyer's contact number unless another account has it.
+  const digits = String(personal.mobile || '').replace(/\D/g, '').slice(-10);
+  const phone = /^[6-9]\d{9}$/.test(digits) && !req.user.phone && !(await getDb().collection('lawyers').findOne({ phone: `+91${digits}` })) ? `+91${digits}` : null;
   const registration = {
-    personal: { fullName: text(personal.fullName), email: text(personal.email), dateOfBirth: text(personal.dateOfBirth, 20), gender: text(personal.gender, 20), faceVerified: Boolean(personal.faceVerified) },
+    personal: { fullName: text(personal.fullName), email: req.user.email || email, dateOfBirth: text(personal.dateOfBirth, 20), gender: text(personal.gender, 20), faceVerified: Boolean(personal.faceVerified) },
     advocate: { barCouncilRegNo: text(advocate.barCouncilRegNo, 60), practiceArea: text(advocate.practiceArea), city: text(advocate.city), court: text(advocate.court), languages: text(advocate.languages), licenseFileName: text(advocate.licenseFileName, 200) || null },
     bank: { holderName: text(bank.holderName), ifsc: text(bank.ifsc, 20).toUpperCase(), accountNumber: text(bank.accountNumber, 30).replace(/\s/g, ''), upi: text(bank.upi, 80) },
     submittedAt: new Date(),
   };
   // `profile` is null until the first save, so it is written whole.
-  const lawyer = req.user; const set = { registration, profile: { ...(lawyer.profile || {}), fullName: registration.personal.fullName, email: registration.personal.email, ...(registration.personal.gender ? { gender: registration.personal.gender } : {}), updatedAt: new Date() } };
+  const lawyer = req.user; const set = { registration, ...(phone ? { phone } : {}), profile: { ...(lawyer.profile || {}), fullName: registration.personal.fullName, email: registration.personal.email, ...(registration.personal.gender ? { gender: registration.personal.gender } : {}), updatedAt: new Date() } };
   if (!lawyer.approved && !lawyer.blocked) set.verificationStatus = 'under_review';
   if (registration.advocate.practiceArea && !(lawyer.categories || []).includes(registration.advocate.practiceArea)) set.categories = [registration.advocate.practiceArea, ...(lawyer.categories || [])];
   await getDb().collection('lawyers').updateOne({ _id: lawyer._id }, { $set: set });
