@@ -27,7 +27,8 @@ async function send(path, init) {
 
 export async function api(path, options = {}) {
   const response = await send(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
-  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Request failed');
+  // No JSON error: usually the server is restarting or waking up (free plan), or is an older version.
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || (response.status === 404 ? 'This feature is not on the server yet (it may still be deploying). Try again in a few minutes.' : `The server is not responding (${response.status}). It may be waking up; try again in a minute.`));
   return response.status === 204 ? null : response.json();
 }
 
