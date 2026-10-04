@@ -64,7 +64,8 @@ class RegistrationSync {
         await PartnerConsultationService().submitRegistration(token, Map<String, dynamic>.from(jsonDecode(saved) as Map));
         await prefs.remove(_key);
       }
-      await _flushDocuments(token, prefs);
+      // Documents can take a while on mobile data: they go in the background.
+      _flushDocuments(token, prefs);
     } on PartnerNetworkException catch (error) {
       // 409: filled in for another email address; 400: incomplete. Don't retry those.
       if (error.statusCode == 409 || error.statusCode == 400) await (await SharedPreferences.getInstance()).remove(_key);
@@ -75,9 +76,19 @@ class RegistrationSync {
   }
 
   /// Uploads the kept documents; one that fails stays for the next try.
+  static bool _uploading = false;
   static Future<void> _flushDocuments(String token, SharedPreferences prefs) async {
     final saved = prefs.getString(_docsKey);
-    if (saved == null) return;
+    if (saved == null || _uploading) return;
+    _uploading = true;
+    try {
+      await _uploadDocuments(token, prefs, saved);
+    } finally {
+      _uploading = false;
+    }
+  }
+
+  static Future<void> _uploadDocuments(String token, SharedPreferences prefs, String saved) async {
     final left = <Map<String, dynamic>>[];
     for (final doc in (jsonDecode(saved) as List).map((d) => Map<String, dynamic>.from(d as Map))) {
       final file = File(doc['path'] as String);

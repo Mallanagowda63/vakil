@@ -7,6 +7,8 @@ import '../widgets/step_progress_header.dart';
 import '../widgets/summary_card.dart';
 import '../services/registration_sync.dart';
 import 'activation_pending_screen.dart';
+import '../services/partner_auth_service.dart';
+import 'login_otp_screen.dart';
 import 'personal_details_screen.dart';
 import 'advocate_verification_screen.dart';
 import 'bank_upi_screen.dart';
@@ -23,11 +25,15 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
 
   Future<void> _submit() async {
     setState(() => _submitting = true);
-    // Goes to the Admin Panel for verification (after sign-in if not signed in yet).
-    await RegistrationSync.submit(context.read<RegistrationData>());
+    // Goes to the Admin Panel for verification. Not signed in yet: the lawyer
+    // confirms their email first, then it is sent right after sign-in.
+    final data = context.read<RegistrationData>();
+    await RegistrationSync.submit(data);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const ActivationPendingScreen()),
+    final signedIn = PartnerAuthService.instance.token != null;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => signedIn ? const ActivationPendingScreen() : LoginOtpScreen(initialEmail: data.email, message: 'Last step: confirm your email with the 6-digit code. Your registration is then sent to the Vakil team for verification.')),
+      (route) => false,
     );
   }
 

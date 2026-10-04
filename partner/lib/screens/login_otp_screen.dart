@@ -11,7 +11,11 @@ import '../widgets/server_address_dialog.dart';
 
 
 class LoginOtpScreen extends StatefulWidget {
-  const LoginOtpScreen({super.key});
+  const LoginOtpScreen({super.key, this.initialEmail, this.message});
+  /// Prefilled email, e.g. the one just used in the registration form.
+  final String? initialEmail;
+  /// Shown above the form, e.g. why signing in is needed now.
+  final String? message;
 
   @override
   State<LoginOtpScreen> createState() => _LoginOtpScreenState();
@@ -30,6 +34,12 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
   String? _devCode;
   Timer? _resendTimer;
   int _resendSeconds = 30;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailCtrl.text = widget.initialEmail ?? '';
+  }
 
   @override
   void dispose() {
@@ -177,6 +187,15 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                     : "Enter your email address and we'll email you a 6-digit code to complete sign-in.",
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5, height: 1.45),
               ),
+              if (widget.message != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(10)),
+                  child: Text(widget.message!, style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600, height: 1.4)),
+                ),
+              ],
               const SizedBox(height: 28),
               if (!_otpSent) ...[
                 const Text('Email Address', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),

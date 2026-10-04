@@ -37,9 +37,9 @@ class _PartnerHomeState extends State<PartnerHome> {
     final token = PartnerAuthService.instance.token;
     var approved = true;
     if (token != null) {
-      // A registration filled in before sign-in goes to the Admin Panel now,
-      // in the background so the next screen shows at once.
-      RegistrationSync.flush(token);
+      // A registration filled in before sign-in goes to the Admin Panel now
+      // (the form is quick; its documents upload in the background).
+      await RegistrationSync.flush(token).timeout(const Duration(seconds: 8), onTimeout: () {});
       try {
         approved = (await fetchVerification(token).timeout(const Duration(seconds: 5))).status == 'approved';
       } catch (_) {
