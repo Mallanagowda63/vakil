@@ -37,10 +37,11 @@ class _PartnerHomeState extends State<PartnerHome> {
     final token = PartnerAuthService.instance.token;
     var approved = true;
     if (token != null) {
-      // A registration filled in before sign-in goes to the Admin Panel now.
-      await RegistrationSync.flush(token);
+      // A registration filled in before sign-in goes to the Admin Panel now,
+      // in the background so the next screen shows at once.
+      RegistrationSync.flush(token);
       try {
-        approved = (await fetchVerification(token)).status == 'approved';
+        approved = (await fetchVerification(token).timeout(const Duration(seconds: 5))).status == 'approved';
       } catch (_) {
         // Offline: open the dashboard as before; the server still blocks an unverified lawyer.
       }
@@ -76,10 +77,17 @@ class _ActivationPendingScreenState extends State<ActivationPendingScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    // Signed in: check every few seconds and open the app once verified.
+    // Signed in: check every 3 seconds, so the app opens within 5 seconds of the admin tapping Verify.
     if (_signedIn) {
+      RegistrationSync.flush(PartnerAuthService.instance.token!);
       _check();
-      _poll = Timer.periodic(const Duration(seconds: 6), (_) => _check());
+      var ticks = 0;
+      _poll = Timer.periodic(const Duration(seconds: 3), (_) {
+        // Documents that could not be sent yet are retried every 30 seconds.
+        final token = PartnerAuthService.instance.token;
+        if (++ticks % 10 == 0 && token != null) RegistrationSync.flush(token);
+        _check();
+      });
     }
   }
 
@@ -90,12 +98,13 @@ class _ActivationPendingScreenState extends State<ActivationPendingScreen>
     super.dispose();
   }
 
+  bool _checking = false;
   Future<void> _check() async {
     final token = PartnerAuthService.instance.token;
-    if (token == null) return;
+    if (token == null || _checking) return;
+    _checking = true;
     try {
-      await RegistrationSync.flush(token);
-      final v = await fetchVerification(token);
+      final v = await fetchVerification(token).timeout(const Duration(seconds: 5));
       if (!mounted) return;
       if (v.status == 'approved') {
         _poll?.cancel();
@@ -104,7 +113,10 @@ class _ActivationPendingScreenState extends State<ActivationPendingScreen>
         return;
       }
       setState(() { _status = v.status; _reason = v.reason; });
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _checking = false;
+    }
   }
 
   void _openRegistration() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PersonalDetailsScreen()));
