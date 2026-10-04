@@ -12,6 +12,7 @@ import '../theme/app_text_styles.dart';
 import 'lawyer_profile_screen.dart';
 import 'lawyer_search_screen.dart';
 import 'legal_help_start_screen.dart';
+import 'legal_saathi_screen.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -364,7 +365,7 @@ class HomeTab extends StatelessWidget {
                   GestureDetector(
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                          builder: (_) => const LegalHelpStartScreen()),
+                          builder: (_) => const LegalSaathiScreen()),
                     ),
                     child: Container(
                       width: double.infinity,

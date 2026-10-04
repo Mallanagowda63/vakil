@@ -29,6 +29,7 @@ export function profileView(account, role) {
   return {
     ...base, dateOfBirth: reg.personal?.dateOfBirth || '', bio: p.bio || '',
     barCouncilRegNo: a.barCouncilRegNo || '', practiceArea: a.practiceArea || (account.categories || [])[0] || '', city: p.city || a.city || '', court: a.court || '', languages: p.languages || a.languages || '',
+    experienceYears: p.experienceYears ?? null,
     categories: account.categories || [], verificationStatus: account.approved ? 'approved' : account.verificationStatus || 'not_submitted',
   };
 }
@@ -92,6 +93,12 @@ const editable = { user: ['fullName', 'language', 'gender', 'aadhaar', 'email', 
 profileRouter.patch('/', requireAuth, async (req, res) => {
   const fields = {};
   for (const key of editable[req.auth.role] || []) if (key in req.body) fields[key] = text(req.body[key], key === 'bio' ? 1000 : 120);
+  // Years of practice (lawyers): a whole number; Legal Saathi uses it in suggestions.
+  if (req.auth.role === 'lawyer' && 'experienceYears' in req.body) {
+    const years = Number(String(req.body.experienceYears).trim());
+    if (!Number.isInteger(years) || years < 0 || years > 70) return res.status(400).json({ error: 'Enter years of experience as a number from 0 to 70' });
+    fields.experienceYears = years;
+  }
   if ('fullName' in fields && !fields.fullName) return res.status(400).json({ error: 'Name cannot be empty' });
   if ('email' in fields && fields.email && !/^\S+@\S+\.\S+$/.test(fields.email)) return res.status(400).json({ error: 'Enter a valid email address' });
   if ('aadhaar' in fields && fields.aadhaar && fields.aadhaar.replace(/\s/g, '').length !== 12) return res.status(400).json({ error: 'Aadhaar number must have 12 digits' });

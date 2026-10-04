@@ -1,7 +1,7 @@
 /// A lawyer as the user sees them: name, photo, categories and availability.
 /// The API never sends a lawyer's phone number.
 class LawyerSummary {
-  const LawyerSummary({required this.id, required this.name, this.photoUrl, this.categories = const [], this.chatOnline = false, this.callOnline = false, this.active = false, this.ratePerMinute = 0, this.callRatePerMinute = 0, this.ratingAverage, this.ratingCount = 0, this.bio = '', this.city = '', this.languages = ''});
+  const LawyerSummary({required this.id, required this.name, this.photoUrl, this.categories = const [], this.chatOnline = false, this.callOnline = false, this.active = false, this.ratePerMinute = 0, this.callRatePerMinute = 0, this.ratingAverage, this.ratingCount = 0, this.bio = '', this.city = '', this.languages = '', this.experienceYears, this.consultationsDone = 0});
   final String id;
   final String name;
   final String? photoUrl;
@@ -26,6 +26,10 @@ class LawyerSummary {
   final String bio;
   final String city;
   final String languages;
+  /// Years of practice, as the lawyer entered it; null if not given.
+  final int? experienceYears;
+  /// Consultations finished on Vakil.
+  final int consultationsDone;
 
   /// The price of a chat, or of a voice call when [call].
   double rateFor({bool call = false}) => call && callRatePerMinute > 0 ? callRatePerMinute : ratePerMinute;
@@ -40,6 +44,7 @@ class LawyerSummary {
   LawyerSummary withStatus({required bool chatOnline, required bool callOnline, required bool active}) => LawyerSummary(
         id: id, name: name, photoUrl: photoUrl, categories: categories, ratePerMinute: ratePerMinute, callRatePerMinute: callRatePerMinute,
         ratingAverage: ratingAverage, ratingCount: ratingCount, bio: bio, city: city, languages: languages,
+        experienceYears: experienceYears, consultationsDone: consultationsDone,
         chatOnline: chatOnline, callOnline: callOnline, active: active,
       );
 
@@ -61,6 +66,8 @@ class LawyerSummary {
         bio: json['bio']?.toString() ?? '',
         city: json['city']?.toString() ?? '',
         languages: json['languages']?.toString() ?? '',
+        experienceYears: (json['experienceYears'] as num?)?.toInt(),
+        consultationsDone: (json['consultationsDone'] as num?)?.toInt() ?? 0,
       );
 }
 

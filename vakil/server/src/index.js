@@ -17,6 +17,7 @@ import { walletRouter } from './routes/wallet.js';
 import { adminRouter } from './routes/admin.js';
 import { adminOpsRouter } from './routes/adminOps.js';
 import { feedbackRouter } from './routes/feedback.js';
+import { aiRouter } from './routes/ai.js';
 import { initRealtime, turnOffAwayLawyers } from './realtime.js';
 import { endTimedOutChats, expirePending } from './services/consultations.js';
 import { missUnansweredCalls } from './services/calls.js';
@@ -64,6 +65,7 @@ app.use('/api/wallet', walletRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin', adminOpsRouter);
 app.use('/api/feedback', feedbackRouter);
+app.use('/api/ai', aiRouter);
 app.use('/api', platformRouter);
 
 app.use((err, _req, res, _next) => {

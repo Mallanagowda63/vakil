@@ -37,6 +37,8 @@ class ProfileController extends ChangeNotifier {
   String court = '';
   String languages = '';
   String bio = '';
+  /// Years of practice; empty until the lawyer adds it. Legal Saathi shows it to clients.
+  String experienceYears = '';
   List<String> categories = const [];
   String verificationStatus = '';
 
@@ -70,7 +72,7 @@ class ProfileController extends ChangeNotifier {
     loaded = false;
     photo = null;
     photoUrl = null;
-    name = email = phone = gender = dateOfBirth = barCouncilRegNo = practiceArea = location = court = languages = bio = verificationStatus = '';
+    name = email = phone = gender = dateOfBirth = barCouncilRegNo = practiceArea = location = court = languages = bio = experienceYears = verificationStatus = '';
     categories = const [];
     notifyListeners();
   }
@@ -88,6 +90,7 @@ class ProfileController extends ChangeNotifier {
     court = p['court']?.toString() ?? '';
     languages = p['languages']?.toString() ?? '';
     bio = p['bio']?.toString() ?? '';
+    experienceYears = p['experienceYears']?.toString() ?? '';
     categories = (p['categories'] as List? ?? const []).map((c) => c.toString()).toList();
     verificationStatus = p['verificationStatus']?.toString() ?? '';
     loaded = true;

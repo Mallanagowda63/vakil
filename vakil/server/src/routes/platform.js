@@ -41,12 +41,16 @@ platformRouter.post('/lawyers/me/payouts', ...roles('lawyer'), async (req, res) 
   catch (e) { if (!e.status) throw e; res.status(e.status).json({ error: e.message }); }
 });
 
+// Users see name, photo, price, rating, experience and availability only; never the lawyer's phone number.
+export async function lawyerCards(lawyers) {
+  const [callRate, ratings, done] = [await callRateOf(), await ratingsByLawyer(), await consultationsDone()];
+  return Promise.all(lawyers.map(async (l) => ({ ...lawyerStatus(l), name: l.profile?.fullName || l.registration?.personal?.fullName || 'Lawyer', photoUrl: l.profile?.photoUrl || null, categories: l.categories || [], ratePerMinute: await rateOf(l), callRatePerMinute: callRate, bio: l.profile?.bio || '', city: l.profile?.city || l.registration?.advocate?.city || '', languages: l.profile?.languages || l.registration?.advocate?.languages || '', experienceYears: l.profile?.experienceYears ?? null, consultationsDone: done.get(l._id.toString()) || 0, ...(ratings.get(l._id.toString()) || { ratingAverage: null, ratingCount: 0 }) })));
+}
+
+export const listedLawyers = (filter = {}) => getDb().collection('lawyers').find({ approved: true, blocked: { $ne: true }, ...filter }).toArray();
+
 platformRouter.get('/lawyers', requireAuth, async (req, res) => {
-  const filter = { approved: true, blocked: { $ne: true } }; if (req.query.category) filter.categories = req.query.category;
-  const lawyers = await getDb().collection('lawyers').find(filter).toArray();
-  const [callRate, ratings] = [await callRateOf(), await ratingsByLawyer()];
-  // Users see name, photo, price, rating and availability only; never the lawyer's phone number.
-  let items = await Promise.all(lawyers.map(async (l) => ({ ...lawyerStatus(l), name: l.profile?.fullName || l.registration?.personal?.fullName || 'Lawyer', photoUrl: l.profile?.photoUrl || null, categories: l.categories || [], ratePerMinute: await rateOf(l), callRatePerMinute: callRate, bio: l.profile?.bio || '', city: l.profile?.city || l.registration?.advocate?.city || '', languages: l.profile?.languages || l.registration?.advocate?.languages || '', ...(ratings.get(l._id.toString()) || { ratingAverage: null, ratingCount: 0 }) })));
+  let items = await lawyerCards(await listedLawyers(req.query.category ? { categories: req.query.category } : {}));
   if (req.query.online === 'true') items = items.filter((l) => l.online);
   // Chat + call first, then chat or call only, then offline.
   items.sort((a, b) => statusRank(b) - statusRank(a) || a.name.localeCompare(b.name));
@@ -93,6 +97,12 @@ platformRouter.patch('/lawyers/me/rate', ...roles('lawyer'), async (req, res) =>
 });
 
 // Average of the clients' published (not hidden) ratings, per lawyer id.
+// Finished consultations per lawyer on Vakil.
+async function consultationsDone() {
+  const rows = await getDb().collection('consultation_requests').aggregate([{ $match: { status: 'COMPLETED' } }, { $group: { _id: '$lawyerId', count: { $sum: 1 } } }]).toArray();
+  return new Map(rows.map((r) => [String(r._id), r.count]));
+}
+
 async function ratingsByLawyer() {
   const out = new Map();
   for (const r of await getDb().collection('reviews').find({}).toArray()) {

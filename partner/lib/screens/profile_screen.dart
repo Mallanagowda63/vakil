@@ -182,6 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _detailRow(icon: Icons.badge_outlined, label: 'Bar Council registration no.', value: profile.barCouncilRegNo),
                 _detailRow(icon: Icons.business_center_outlined, label: 'Practice areas', value: profile.specialization),
                 _detailRow(icon: Icons.account_balance_outlined, label: 'Primary court', value: profile.court),
+                _detailRow(icon: Icons.workspace_premium_outlined, label: 'Years of experience', value: profile.experienceYears.isEmpty ? '' : '${profile.experienceYears} years', onEdit: () => _edit(title: 'Years of experience', field: 'experienceYears', initialValue: profile.experienceYears, keyboardType: TextInputType.number)),
                 _detailRow(icon: Icons.location_on_outlined, label: 'City', value: profile.location, onEdit: () => _edit(title: 'City', field: 'city', initialValue: profile.location)),
                 _detailRow(icon: Icons.language_outlined, label: 'Languages', value: profile.languages, onEdit: () => _edit(title: 'Languages', field: 'languages', initialValue: profile.languages)),
                 const Padding(
