@@ -53,7 +53,7 @@ class ChatPerson {
 
 /// One row of the chat list (GET /api/chats) and the chat screen header.
 class ChatSummary {
-  const ChatSummary({required this.requestId, required this.status, required this.other, this.isTrial = false, this.remainingSeconds, this.elapsedSeconds, this.rating, this.lastMessage, this.unread = 0, this.lastActivityAt});
+  const ChatSummary({required this.requestId, required this.status, required this.other, this.isTrial = false, this.remainingSeconds, this.elapsedSeconds, this.rating, this.lastMessage, this.unread = 0, this.lastActivityAt, this.consultationType = 'chat'});
   final String requestId;
   final String status;
   final ChatPerson other;
@@ -67,6 +67,10 @@ class ChatSummary {
   final DateTime? lastActivityAt;
 
   bool get isOngoing => status == 'ONGOING';
+  /// 'chat' or 'call': a chat consultation has no call button and a call
+  /// consultation has no message box.
+  final String consultationType;
+  bool get isCall => consultationType == 'call';
 
   factory ChatSummary.fromJson(Map<String, dynamic> json) {
     final last = json['lastMessage'] as Map<String, dynamic>?;
@@ -81,6 +85,7 @@ class ChatSummary {
       lastMessage: last == null ? null : ChatMessage.fromJson({...last, 'requestId': json['requestId']}),
       unread: (json['unread'] as num?)?.toInt() ?? 0,
       lastActivityAt: DateTime.tryParse(json['lastActivityAt']?.toString() ?? '')?.toLocal(),
+      consultationType: json['consultationType']?.toString() ?? 'chat',
     );
   }
 }

@@ -84,7 +84,7 @@ class PartnerAuthService {
       debugPrint('Partner auth network error: $error\n$stack');
       // The laptop may have a new address: find it and try once more there.
       if (!retried && await ApiConfig.findServer() && ApiConfig.baseUrl != usedUrl) return _call(method, path, body: body, token: token, retried: true);
-      throw const PartnerNetworkException(ApiConfig.unreachableMessage);
+      throw PartnerNetworkException(ApiConfig.unreachableMessage);
     }
   }
 }

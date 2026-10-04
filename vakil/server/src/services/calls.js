@@ -69,6 +69,8 @@ export async function startCall({ requestId, caller }) {
   if (request.status === 'COMPLETED') throw fail(403, 'This chat has ended');
   if (request.status !== 'ONGOING') throw fail(404, 'Active consultation not found');
   if (request.endsAt && new Date() >= new Date(request.endsAt)) throw fail(403, 'Chat time is over');
+  // A chat consultation stays a chat; only a call consultation can call.
+  if ((request.consultationType || 'chat') !== 'call') throw fail(403, 'This is a chat consultation. Voice calls are not available here.');
   if (!zegoConfig()) throw fail(503, 'Voice calls are not configured yet');
   // The admin can switch voice calls off for a lawyer (Lawyer Management → Communication channels).
   const lawyer = await getDb().collection('lawyers').findOne({ _id: request.lawyerId });

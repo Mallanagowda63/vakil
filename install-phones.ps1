@@ -1,8 +1,10 @@
 # Builds small release APKs (arm64 only) and installs them as updates on every
 # connected phone that has the app. `adb install -r` keeps each app's login.
 # Use this instead of `flutter run` on phones with little free storage.
-# Optional: -ServerIp 192.168.1.14 builds with that server address.
-param([string]$ServerIp = '')
+# The apps use the cloud server (Render) by default.
+# Optional: -Local builds for the laptop server (USB / Wi-Fi search),
+# -ServerIp 192.168.1.14 for the laptop server at that address.
+param([string]$ServerIp = '', [switch]$Local)
 
 $ErrorActionPreference = 'Stop'
 
@@ -15,6 +17,7 @@ if (-not $devices) { throw 'No phone found. Connect USB, enable USB debugging, a
 
 $define = @()
 if ($ServerIp) { $define = @("--dart-define=API_BASE_URL=http://${ServerIp}:4000") }
+elseif ($Local) { $define = @('--dart-define=API_BASE_URL=http://localhost:4000') }
 
 $apps = @(
   @{ Folder = 'vakil'; Package = 'com.vakil.vakil'; Name = 'User App' },

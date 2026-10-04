@@ -74,7 +74,7 @@ class PartnerConsultationService {
       debugPrint('Partner API network error: $error\n$stack');
       // The laptop may have a new address: find it and try once more there.
       if (!retried && await ApiConfig.findServer() && ApiConfig.baseUrl != usedUrl) return _request(send, retried: true);
-      throw const PartnerNetworkException(ApiConfig.unreachableMessage);
+      throw PartnerNetworkException(ApiConfig.unreachableMessage);
     }
   }
 }

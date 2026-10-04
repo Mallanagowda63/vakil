@@ -5,26 +5,33 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Where the Vakil server is. Nobody types an address: [findServer] looks for
-/// the laptop over USB (`adb reverse`, done by start-vakil-local.ps1), at the
+/// Where the Vakil server is. By default the apps use the cloud server on
+/// Render. A build with a local `API_BASE_URL` (http://…) looks for the laptop
+/// instead: over USB (`adb reverse`, done by start-vakil-local.ps1), at the
 /// Wi-Fi addresses the server last reported, and finally by searching the
 /// Wi-Fi or hotspot network the phone is on. What it finds is remembered.
 class ApiConfig {
   ApiConfig._();
 
-  /// Built-in address (USB). Override at build time with
+  /// Built-in address: the cloud server. For the laptop server build with
+  /// `--dart-define=API_BASE_URL=http://localhost:4000` (USB) or
   /// `--dart-define=API_BASE_URL=http://<ip>:4000`.
   static const String defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:4000',
+    defaultValue: 'https://vakil-rivr.onrender.com',
   );
+
+  /// The cloud server has one fixed address, so nothing is searched for.
+  static bool get _cloud => defaultBaseUrl.startsWith('https://');
   static const String _socketOverride = String.fromEnvironment('SOCKET_URL');
   static const _prefsKey = 'server_base_url';
   static const _knownKey = 'server_known_urls';
   static const int _port = 4000;
-  static const Duration requestTimeout = Duration(seconds: 15);
-  static const String unreachableMessage =
-      "Can't reach the Vakil server. Make sure it is running on the laptop and this phone is connected to it by USB or on the same Wi-Fi or hotspot.";
+  /// The free cloud server sleeps when unused and takes up to a minute to wake.
+  static Duration get requestTimeout => Duration(seconds: _cloud ? 60 : 15);
+  static String get unreachableMessage => _cloud
+      ? "Can't reach the Vakil server. Check this phone's internet connection and try again."
+      : "Can't reach the Vakil server. Make sure it is running on the laptop and this phone is connected to it by USB or on the same Wi-Fi or hotspot.";
 
   static String _baseUrl = defaultBaseUrl;
   static List<String> _known = const [];
@@ -44,6 +51,7 @@ class ApiConfig {
   /// Loads the address found last time. Call once at start-up, and in
   /// background isolates (push handlers) before making requests.
   static Future<void> load() async {
+    if (_cloud) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString(_prefsKey);
@@ -65,6 +73,11 @@ class ApiConfig {
   }
 
   static Future<bool> _find() async {
+    if (_cloud) {
+      if (await _health(defaultBaseUrl, requestTimeout) != null) return true;
+      _lastMiss = DateTime.now();
+      return false;
+    }
     // Addresses already known: the current one, USB, and those the server reported.
     var found = await _firstServer({_baseUrl, defaultBaseUrl, ..._known}.toList(), const Duration(seconds: 2));
     // Otherwise every device on the phone's own networks with port 4000 open.

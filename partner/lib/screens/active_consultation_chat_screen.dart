@@ -55,6 +55,8 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
   bool _foreground = true;
 
   String get _id => widget.requestId;
+  /// A call consultation: a call button and no message box. A chat one: the opposite.
+  bool get _isCall => _chat?.isCall ?? false;
   String? get _token => PartnerAuthService.instance.token;
   int? get _remaining { final s = _endsAt?.difference(DateTime.now()).inSeconds; return s == null ? null : (s < 0 ? 0 : s); }
   bool get _ended => _status != 'ONGOING' || _remaining == 0;
@@ -257,9 +259,9 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
     final token = _token;
     if (token == null) return;
     final end = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
-      title: const Text('End chat?'),
-      content: Text('${_chat?.other.name ?? widget.title} will not be able to send more messages.'),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('End Chat'))],
+      title: Text(_isCall ? 'End consultation?' : 'End chat?'),
+      content: Text(_isCall ? 'You will not be able to call ${_chat?.other.name ?? widget.title} again in this consultation.' : '${_chat?.other.name ?? widget.title} will not be able to send more messages.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(context, true), child: Text(_isCall ? 'End' : 'End Chat'))],
     ));
     if (end != true) return;
     try {
@@ -272,7 +274,7 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
   }
 
   String get _subtitle {
-    if (_ended) return 'Chat ended';
+    if (_ended) return _isCall ? 'Consultation ended' : 'Chat ended';
     if (_clientTyping) return 'typing...';
     return _otherOnline ? 'Online' : lastSeenLabel(_lastSeen);
   }
@@ -296,9 +298,9 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
           ])),
         ]),
         actions: [
-          IconButton(tooltip: 'Voice call', onPressed: _ended || _loading ? null : _startCall, icon: const Icon(Icons.call_outlined)),
+          if (_isCall) IconButton(tooltip: 'Voice call', onPressed: _ended || _loading ? null : _startCall, icon: const Icon(Icons.call_outlined)),
           if (!_ended && !_isTrial && !_loading)
-            PopupMenuButton<String>(onSelected: (_) => _confirmEnd(), itemBuilder: (_) => const [PopupMenuItem(value: 'end', child: Text('End Chat'))]),
+            PopupMenuButton<String>(onSelected: (_) => _confirmEnd(), itemBuilder: (_) => [PopupMenuItem(value: 'end', child: Text(_isCall ? 'End consultation' : 'End Chat'))]),
         ],
       ),
       body: Column(children: [
@@ -323,7 +325,7 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
             : _error != null
                 ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: () { setState(() => _loading = true); _load(); }, child: const Text('Try again'))]))
                 : items.isEmpty
-                    ? Center(child: Text(_ended ? 'This chat has ended.' : 'Chat started. Say hello to $name.', style: const TextStyle(color: AppColors.textSecondary)))
+                    ? Center(child: Text(_ended ? (_isCall ? 'This consultation has ended.' : 'This chat has ended.') : _isCall ? 'Voice call consultation with $name.' : 'Chat started. Say hello to $name.', style: const TextStyle(color: AppColors.textSecondary)))
                     : ListView.builder(
                         controller: _scroll,
                         reverse: true,
@@ -342,10 +344,23 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
                           ]);
                         },
                       )),
-        SafeArea(top: false, child: _ended ? _endedBar() : _inputBar(name)),
+        SafeArea(top: false, child: _ended ? _endedBar() : _loading ? const SizedBox.shrink() : _isCall ? _callBar(name) : _inputBar(name)),
       ]),
     );
   }
+
+  /// Call consultation: calling replaces the message box.
+  Widget _callBar(String name) => Container(
+        width: double.infinity,
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        child: FilledButton.icon(
+          onPressed: _startCall,
+          style: FilledButton.styleFrom(backgroundColor: AppColors.success, minimumSize: const Size.fromHeight(48)),
+          icon: const Icon(Icons.call),
+          label: Text('Call $name'),
+        ),
+      );
 
   Widget _inputBar(String name) => Container(
         color: Colors.white,
@@ -368,7 +383,7 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
         width: double.infinity,
         color: Colors.white,
         padding: const EdgeInsets.all(16),
-        child: Text(_isTrial ? 'The free trial has ended' : _timed ? 'Chat time is over' : 'Chat ended', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+        child: Text(_isTrial ? 'The free trial has ended' : _timed ? (_isCall ? 'Call time is over' : 'Chat time is over') : (_isCall ? 'Consultation ended' : 'Chat ended'), textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
       );
 }
 

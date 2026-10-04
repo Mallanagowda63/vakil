@@ -25,6 +25,8 @@ export async function sendChatMessage({ requestId, sender, text, clientId }) {
   if (request.status === 'COMPLETED') throw fail(403, 'This chat has ended');
   if (request.status !== 'ONGOING') throw fail(404, 'Active consultation not found');
   if (request.endsAt && new Date() >= new Date(request.endsAt)) throw fail(403, 'Chat time is over');
+  // A call consultation stays a call; messages are only for chat consultations.
+  if (request.consultationType === 'call') throw fail(403, 'This is a voice call consultation. Messages are not available here.');
   const body = String(text || '').trim();
   if (!body || body.length > 4000) throw fail(400, 'Message must contain 1 to 4000 characters');
   const db = getDb(); const messages = db.collection('messages');

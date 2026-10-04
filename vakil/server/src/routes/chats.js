@@ -17,7 +17,7 @@ async function summarize(chat, role) {
   return {
     requestId: request.id, status: chat.status, isTrial: Boolean(chat.isTrial), remainingSeconds: request.remainingSeconds, elapsedSeconds: request.elapsedSeconds, rating: (role === 'lawyer' ? chat.lawyerRating : chat.rating) ?? null,
     ratePerMinute: chat.ratePerMinute ?? null, billedMinutes: chat.billedMinutes || 0, totalAmount: chat.totalAmount || 0, secondsToNextCharge: request.secondsToNextCharge ?? null, endReason: chat.endReason ?? null,
-    category: chat.category, endedBy: chat.endedBy ?? null,
+    category: chat.category, consultationType: chat.consultationType || 'chat', endedBy: chat.endedBy ?? null,
     other: { id: otherId.toString(), role: role === 'lawyer' ? 'user' : 'lawyer', name: other?.profile?.fullName || (role === 'lawyer' ? request.userName : request.lawyerName), photoUrl: other?.profile?.photoUrl || null, online: Boolean(other?.connected), lastSeenAt: other?.lastSeenAt || null },
     lastMessage: lastMessage ? { id: lastMessage._id.toString(), type: lastMessage.type || 'text', text: lastMessage.text, senderRole: lastMessage.senderRole, status: lastMessage.status || 'sent', createdAt: lastMessage.createdAt } : null,
     unread, lastActivityAt: lastMessage?.createdAt || chat.updatedAt,
