@@ -47,3 +47,11 @@ export async function download(path, filename) {
   const link = Object.assign(document.createElement('a'), { href: url, download: filename });
   link.click(); URL.revokeObjectURL(url);
 }
+
+// A private file (e.g. a lawyer's verification document) as a temporary URL
+// for <img>/<iframe>; the caller revokes it with URL.revokeObjectURL.
+export async function fileUrl(path) {
+  const response = await send(path, { headers: {} });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Could not load the file');
+  return URL.createObjectURL(await response.blob());
+}

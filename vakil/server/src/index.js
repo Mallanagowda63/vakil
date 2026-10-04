@@ -39,9 +39,10 @@ Layer.prototype.handle_request = function handle(req, res, next) {
 
 const app = express();
 app.use(cors({ origin: '*' }));
-// Photo uploads bring their own, larger body limit (routes/profile.js).
+// Photo and document uploads bring their own, larger body limit (routes/profile.js, routes/platform.js).
 const jsonBody = express.json();
-app.use((req, res, next) => req.path === '/api/profile/photo' ? next() : jsonBody(req, res, next));
+const largeBodies = ['/api/profile/photo', '/api/lawyers/me/documents'];
+app.use((req, res, next) => largeBodies.includes(req.path) ? next() : jsonBody(req, res, next));
 app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', fallthrough: false }));
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

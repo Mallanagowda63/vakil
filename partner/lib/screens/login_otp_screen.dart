@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primary_button.dart';
-import 'dashboard_screen.dart';
+import 'activation_pending_screen.dart';
 import 'personal_details_screen.dart';
 import '../services/partner_auth_service.dart';
 import '../widgets/server_address_dialog.dart';
@@ -113,7 +113,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     if (!mounted) return;
     setState(() => _verifying = false);
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      MaterialPageRoute(builder: (_) => const PartnerHome()),
       (route) => false,
     );
   }

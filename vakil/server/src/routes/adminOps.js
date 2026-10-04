@@ -4,6 +4,7 @@ import { roles } from './auth.js';
 import { adminEndCall } from '../services/calls.js';
 import { completeSession } from '../services/consultations.js';
 import { changeBalance } from '../services/wallet.js';
+import { documentKinds, documentsOf, findDocument } from '../services/lawyerDocuments.js';
 import { accountsById, dateRange, idOf, nameOf, page, seconds, sendCsv, startOfToday, toId } from '../services/adminData.js';
 
 // Admin Panel: settings, money, support and reports. Money collections
@@ -164,13 +165,42 @@ adminOpsRouter.get('/lawyers/:id', run(async (req) => {
       featured: Boolean(lawyer.featured), recommended: Boolean(lawyer.recommended), channels: { chat: lawyer.channels?.chat !== false, call: lawyer.channels?.call !== false },
       rateOverride: lawyer.ratePerMinute ?? null, commissionOverride: lawyer.commissionOverride ?? null, defaultRate: pricing.chatPerMinute, defaultCommission: commission.defaultPercent,
       registration: { submittedAt: reg.submittedAt || null, dateOfBirth: reg.personal?.dateOfBirth || null, gender: reg.personal?.gender || null, barCouncilRegNo: reg.advocate?.barCouncilRegNo || null, practiceArea: reg.advocate?.practiceArea || null, city: reg.advocate?.city || null, court: reg.advocate?.court || null, languages: reg.advocate?.languages || null, faceVerified: Boolean(reg.personal?.faceVerified), licenseUploaded: Boolean(reg.advocate?.licenseFileName) },
-      bank: bankOf(lawyer), money: money.find((m) => m.id === lawyer._id.toString()),
+      bank: bankOf(lawyer), money: money.find((m) => m.id === lawyer._id.toString()), documents: documentsOf(lawyer), rejectionReason: lawyer.rejectionReason || '',
     },
     stats: { consultations: requests.filter((r) => r.status === 'COMPLETED').length, requests: requests.length, ratingAverage: visibleReviews.length ? round2(sum(visibleReviews, (r) => r.rating) / visibleReviews.length) : null, ratingCount: visibleReviews.length, openComplaints: complaints.filter((c) => c.status !== 'resolved').length },
     recent: requests.slice(0, 10).map((r) => ({ id: r._id.toString(), userName: r.userName || nameOf(users.get(idOf(r.userId)), 'Client'), category: r.category, status: r.status, isTrial: Boolean(r.isTrial), createdAt: r.createdAt, durationSeconds: r.durationSeconds ?? null, rating: r.rating ?? null })),
     complaints: complaints.slice(0, 10).map(complaintView),
   };
 }));
+
+// Lawyer Verification page: every Partner App registration with its details
+// and documents, waiting ones first.
+adminOpsRouter.get('/verifications', run(async () => {
+  const lawyers = await col('lawyers').find({ $or: [{ 'registration.submittedAt': { $ne: null } }, { approved: { $ne: true } }] }).toArray();
+  const order = { under_review: 0, pending: 1, rejected: 2, approved: 3, suspended: 4 };
+  const items = lawyers.map((l) => {
+    const reg = l.registration || {}; const p = reg.personal || {}; const a = reg.advocate || {};
+    return {
+      id: l._id.toString(), name: nameOf(l, 'Lawyer'), email: l.email || p.email || null, phone: l.phone || null, photoUrl: l.profile?.photoUrl || null,
+      status: verificationStatusOf(l), submittedAt: reg.submittedAt || null, approvedAt: l.approvedAt || null, approvedBy: l.approvedBy || null, rejectionReason: l.rejectionReason || '', verificationNotes: l.verificationNotes || '', createdAt: l.createdAt || null,
+      personal: { fullName: p.fullName || '', dateOfBirth: p.dateOfBirth || '', gender: p.gender || '', faceVerified: Boolean(p.faceVerified) },
+      advocate: { barCouncilRegNo: a.barCouncilRegNo || '', practiceArea: a.practiceArea || '', city: a.city || '', court: a.court || '', languages: a.languages || '', licenseFileName: a.licenseFileName || '' },
+      bank: bankOf(l), documents: documentsOf(l),
+    };
+  });
+  items.sort((x, y) => order[x.status] - order[y.status] || new Date(y.submittedAt || y.createdAt || 0) - new Date(x.submittedAt || x.createdAt || 0));
+  const count = (s) => items.filter((i) => i.status === s).length;
+  return { items, stats: { underReview: count('under_review'), notSubmitted: count('pending'), rejected: count('rejected'), approved: count('approved') } };
+}));
+
+// One verification document (face photo or licence) as the file itself.
+adminOpsRouter.get('/lawyers/:id/documents/:kind', async (req, res) => {
+  const _id = toId(req.params.id);
+  const doc = _id && documentKinds[req.params.kind] && await findDocument(_id, req.params.kind);
+  if (!doc) return res.status(404).json({ error: 'Document not uploaded' });
+  res.set({ 'Content-Type': doc.contentType, 'Content-Disposition': `inline; filename="${String(doc.fileName).replace(/[^\w.-]/g, '_')}"`, 'Cache-Control': 'private, no-store' });
+  res.send(Buffer.from(doc.data.buffer ?? doc.data));
+});
 
 export const verificationStatusOf = (l) => l.blocked ? 'suspended' : l.approved ? 'approved' : l.verificationStatus === 'rejected' ? 'rejected' : l.registration?.submittedAt ? 'under_review' : 'pending';
 

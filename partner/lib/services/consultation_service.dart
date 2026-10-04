@@ -21,6 +21,9 @@ class PartnerConsultationService {
   Future<Map<String, dynamic>> getRequest(String id, String token) => _get('/api/consultations/$id', token);
   Future<void> registerDevice(String token, String fcmToken) => _post('/api/devices', token, {'token': fcmToken});
   Future<void> submitRegistration(String token, Map<String, dynamic> body) => _post('/api/lawyers/me/registration', token, body);
+  /// A verification document ('face' or 'license') for the Admin Panel.
+  Future<void> uploadDocument(String token, {required String kind, required String base64File, required String contentType, required String fileName}) =>
+      _post('/api/lawyers/me/documents', token, {'kind': kind, 'file': base64File, 'contentType': contentType, 'fileName': fileName});
   /// What the lawyer earned (client payments minus commission): today's numbers, balance, recent entries.
   Future<Map<String, dynamic>> earnings(String token) => _get('/api/lawyers/me/earnings', token);
   /// Queues the available balance as a payout; the response is the updated summary plus `payout`.

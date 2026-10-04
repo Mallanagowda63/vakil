@@ -1,9 +1,10 @@
 import React,{useEffect,useState} from 'react';
 import {Link,NavLink,Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
-import {LayoutDashboard,Scale,Briefcase,BadgeIndianRupee,Users,Radio,Clock3,CreditCard,WalletCards,HandCoins,Percent,History as HistoryIcon,PhoneCall,MessageSquareWarning,RotateCcw,Star,ChartNoAxesCombined,Menu,X,Bell,LogOut,ChevronRight,ArrowLeftRight} from 'lucide-react';
+import {LayoutDashboard,Scale,Briefcase,BadgeIndianRupee,Users,Radio,Clock3,CreditCard,WalletCards,HandCoins,Percent,History as HistoryIcon,PhoneCall,MessageSquareWarning,RotateCcw,Star,ChartNoAxesCombined,Menu,X,Bell,LogOut,ChevronRight,ArrowLeftRight,BadgeCheck} from 'lucide-react';
 import {api} from './api.js';
 import Dashboard from './pages/Dashboard.jsx';
 import Lawyers from './pages/Lawyers.jsx';
+import Verification from './pages/Verification.jsx';
 import Pricing from './pages/Pricing.jsx';
 import Customers from './pages/Customers.jsx';
 import Live from './pages/Live.jsx';
@@ -17,7 +18,7 @@ import Transactions from './pages/Transactions.jsx';
 
 // Sidebar in the LegalDash design order. Old mock pages: admin/legacy-mock/.
 const menu=[
- ['dashboard','Main Dashboard',LayoutDashboard,Dashboard],['lawyers','Lawyer Management',Briefcase,Lawyers],['pricing','Lawyer Pricing Management',BadgeIndianRupee,Pricing],['customers','Customer Management',Users,Customers],
+ ['dashboard','Main Dashboard',LayoutDashboard,Dashboard],['verification','Lawyer Verification',BadgeCheck,Verification],['lawyers','Lawyer Management',Briefcase,Lawyers],['pricing','Lawyer Pricing Management',BadgeIndianRupee,Pricing],['customers','Customer Management',Users,Customers],
  ['live','Live Consultation Management',Radio,Live],['billing','Per-Minute Billing System',Clock3,Billing],['payments','Payment Management',CreditCard,Payments],['wallet','Wallet Management',WalletCards,Wallets],['transactions','Wallet Transactions',ArrowLeftRight,Transactions],
  ['payouts','Lawyer Payout Management',HandCoins,Payouts],['commissions','Commission Management',Percent,Commission],['history','Consultation History',HistoryIcon,History],['calls','Call Logs',PhoneCall,CallLogs],
  ['complaints','Complaints and Dispute Management',MessageSquareWarning,Complaints],['refunds','Refund and Cancellation Rules',RotateCcw,Refunds],['reviews','Ratings and Reviews',Star,Reviews],['analytics','Report And Analytics',ChartNoAxesCombined,Reports]
@@ -28,7 +29,7 @@ function Login(){const nav=useNavigate();const [register,setRegister]=useState(f
 // Bell: real items waiting for an admin (verifications, complaints, refunds, failed payments).
 function Alerts(){const [a,setA]=useState(null);const [open,setOpen]=useState(false);
  useEffect(()=>{const load=()=>api('/api/admin/overview').then(d=>setA({...d.alerts,verifications:d.registration.pendingVerification})).catch(()=>{});load();const t=setInterval(load,30000);return()=>clearInterval(t)},[]);
- const items=a?[['verifications','lawyers waiting for verification','/lawyers?status=under_review'],['openComplaints','open complaints','/complaints'],['refundRequests','refund requests to decide','/refunds'],['failedPayments','failed payments','/payments'],['flaggedReviews','flagged reviews','/reviews']].filter(([k])=>a[k]>0):[];
+ const items=a?[['verifications','lawyers waiting for verification','/verification'],['openComplaints','open complaints','/complaints'],['refundRequests','refund requests to decide','/refunds'],['failedPayments','failed payments','/payments'],['flaggedReviews','flagged reviews','/reviews']].filter(([k])=>a[k]>0):[];
  return <div className="profile"><button className="icon-btn" onClick={()=>setOpen(!open)} aria-label="Alerts"><Bell size={17}/>{items.length>0&&<i/>}</button>{open&&<div className="profile-menu ld-alerts"><b>Alerts</b>{items.length?items.map(([k,text,to])=><Link key={k} to={to} onClick={()=>setOpen(false)}><strong>{a[k]}</strong> {text}</Link>):<p>Nothing needs attention.</p>}</div>}</div>}
 
 function Shell(){const [open,setOpen]=useState(false);const [profile,setProfile]=useState(false);const loc=useLocation();const nav=useNavigate();const current=menu.find(([path])=>loc.pathname.startsWith('/'+path))?.[1]||'Dashboard';

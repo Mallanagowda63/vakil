@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
 import { roles } from './auth.js';
-import { announceLawyer, disconnectAccount } from '../realtime.js';
+import { announceLawyer, disconnectAccount, emitTo } from '../realtime.js';
+import { notify } from '../push.js';
 import { getSetting, verificationStatusOf } from './adminOps.js';
 import { callSwitchOn, chatSwitchOn, isAvailable, isCallAvailable } from '../services/consultations.js';
 import { accountsById, activeCallStatuses, average, dateRange, findRequests, idOf, nameOf, page, requestCsvFields, requestRows, seconds, sendCsv, startOfToday, toId } from '../services/adminData.js';
@@ -161,12 +162,21 @@ adminRouter.patch('/lawyers/:id', async (req, res) => {
     set[key] = n;
   }
   if ('verificationNotes' in b) set.verificationNotes = String(b.verificationNotes || '').slice(0, 2000);
+  // Shown to the lawyer in the Partner App so they can fix the registration and send it again.
+  if (set.verificationStatus === 'rejected') set.rejectionReason = String(b.rejectionReason || '').trim().slice(0, 500) || null;
+  if (set.verificationStatus === 'approved') set.rejectionReason = null;
   if (!Object.keys(set).length) return res.status(400).json({ error: 'Nothing to change' });
   const { matchedCount } = await getDb().collection('lawyers').updateOne({ _id }, { $set: set });
   if (!matchedCount) return res.status(404).json({ error: 'Lawyer not found' });
   // A suspended lawyer stops taking requests and is signed out right away.
   if (set.blocked) { await getDb().collection('lawyers').updateOne({ _id }, { $set: { online: false } }); disconnectAccount('lawyer', _id); }
   await announceLawyer(_id);
+  // Verified or rejected: the Partner App's waiting screen opens the app or shows the reason.
+  if (set.verificationStatus === 'approved' || set.verificationStatus === 'rejected') {
+    const approved = set.verificationStatus === 'approved';
+    emitTo('lawyer', _id, 'verification_updated', { status: set.verificationStatus });
+    await notify({ recipientId: _id, recipientRole: 'lawyer', title: approved ? 'Your account is verified' : 'Registration needs changes', body: approved ? 'Welcome to Vakil Partner! Open the app and go online to start taking consultations.' : (set.rejectionReason || 'Open the app to see what to fix and send your registration again.'), data: { type: 'verification_updated', status: set.verificationStatus } }).catch(() => {});
+  }
   res.json({ ok: true });
 });
 

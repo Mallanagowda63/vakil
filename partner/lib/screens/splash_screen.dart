@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/partner_auth_service.dart';
-import 'dashboard_screen.dart';
+import 'activation_pending_screen.dart';
 import 'login_otp_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -28,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       if (!mounted) return;
       final signedIn = results.first as bool;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => signedIn ? const DashboardScreen() : const LoginOtpScreen()),
+        MaterialPageRoute(builder: (_) => signedIn ? const PartnerHome() : const LoginOtpScreen()),
       );
     });
   }

@@ -29,8 +29,8 @@ export function profileView(account, role) {
   return {
     ...base, dateOfBirth: reg.personal?.dateOfBirth || '', bio: p.bio || '',
     barCouncilRegNo: a.barCouncilRegNo || '', practiceArea: a.practiceArea || (account.categories || [])[0] || '', city: p.city || a.city || '', court: a.court || '', languages: p.languages || a.languages || '',
-    experienceYears: p.experienceYears ?? null,
-    categories: account.categories || [], verificationStatus: account.approved ? 'approved' : account.verificationStatus || 'not_submitted',
+    experienceYears: p.experienceYears ?? null, rejectionReason: account.verificationStatus === 'rejected' ? account.rejectionReason || '' : '',
+    categories: account.categories || [], verificationStatus: account.blocked ? 'suspended' : account.approved ? 'approved' : account.verificationStatus === 'rejected' ? 'rejected' : account.registration?.submittedAt ? 'under_review' : 'not_submitted',
   };
 }
 

@@ -1,10 +1,11 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireAuth, roles } from './auth.js';
 import { lawyerStatus, statusRank } from '../services/consultations.js';
 import { callRateOf, rateOf, round2 } from '../services/wallet.js';
-import { announceLawyer } from '../realtime.js';
+import { announceLawyer, emitAdmin } from '../realtime.js';
 import { earningsSummary, requestPayout } from '../services/earnings.js';
+import { MAX_DOCUMENT_BYTES, documentKinds, documentTypes, saveDocument } from '../services/lawyerDocuments.js';
 
 export const platformRouter = Router();
 
@@ -58,6 +59,21 @@ platformRouter.get('/lawyers', requireAuth, async (req, res) => {
 });
 
 
+// POST /api/lawyers/me/documents { kind: 'face' | 'license', file: <base64>, contentType, fileName }
+// The verification documents the Admin Panel checks before approving.
+platformRouter.post('/lawyers/me/documents', express.json({ limit: '8mb' }), ...roles('lawyer'), async (req, res) => {
+  const { kind, contentType } = req.body;
+  if (!documentKinds[kind]) return res.status(400).json({ error: 'Unknown document' });
+  if (!documentTypes[contentType]) return res.status(400).json({ error: 'Upload a JPG, PNG or PDF file' });
+  let bytes;
+  try { bytes = Buffer.from(String(req.body.file || ''), 'base64'); } catch { bytes = Buffer.alloc(0); }
+  if (bytes.length < 100) return res.status(400).json({ error: 'Choose a file to upload' });
+  if (bytes.length > MAX_DOCUMENT_BYTES) return res.status(413).json({ error: 'The file is too large (5 MB at most)' });
+  const document = await saveDocument({ lawyerId: req.user._id, kind, bytes, contentType, fileName: req.body.fileName });
+  emitAdmin('lawyer_status_changed', { id: req.user._id.toString() });
+  res.status(201).json({ document });
+});
+
 // Partner App registration (Review & Submit): personal, advocate and bank
 // details go to the Admin Panel for verification. Files are not uploaded yet;
 // only whether a licence file was attached.
@@ -79,10 +95,12 @@ platformRouter.post('/lawyers/me/registration', ...roles('lawyer'), async (req, 
   };
   // `profile` is null until the first save, so it is written whole.
   const lawyer = req.user; const set = { registration, ...(phone ? { phone } : {}), profile: { ...(lawyer.profile || {}), fullName: registration.personal.fullName, email: registration.personal.email, ...(registration.personal.gender ? { gender: registration.personal.gender } : {}), updatedAt: new Date() } };
-  if (!lawyer.approved && !lawyer.blocked) set.verificationStatus = 'under_review';
+  // A new or corrected registration goes (back) to the Admin Panel's verification queue.
+  if (!lawyer.approved && !lawyer.blocked) Object.assign(set, { verificationStatus: 'under_review', rejectionReason: null });
   if (registration.advocate.practiceArea && !(lawyer.categories || []).includes(registration.advocate.practiceArea)) set.categories = [registration.advocate.practiceArea, ...(lawyer.categories || [])];
   await getDb().collection('lawyers').updateOne({ _id: lawyer._id }, { $set: set });
   await getDb().collection('consultation_requests').updateMany({ lawyerId: lawyer._id }, { $set: { lawyerName: registration.personal.fullName } });
+  emitAdmin('lawyer_status_changed', { id: lawyer._id.toString() });
   res.json({ ok: true, verificationStatus: lawyer.approved ? 'approved' : 'under_review' });
 });
 
