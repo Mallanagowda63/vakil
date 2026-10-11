@@ -18,7 +18,7 @@ function transporter() {
 }
 
 export async function sendOtpEmail(to, code, role) {
-  const app = role === 'lawyer' ? 'Vakil Partner' : 'Vakil';
+  const app = role === 'lawyer' ? 'Legally Talk Partner' : role === 'admin' ? 'Legally Talk Admin' : 'Legally Talk';
   await transporter().sendMail({
     from: process.env.MAIL_FROM || `${app} <${process.env.SMTP_USER}>`,
     to,

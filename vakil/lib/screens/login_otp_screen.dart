@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_logo.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/app_widgets.dart';
 import 'create_profile_screen.dart';
@@ -292,18 +293,7 @@ class _BrandCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.shield_outlined,
-                color: Colors.white, size: 34),
-          ),
-          const SizedBox(height: 16),
-          Text('Vakil', style: AppText.h1(AppColors.textWhite)),
+          const AppLogo(width: 200, light: true),
           const SizedBox(height: 10),
           Text(
             'Instant legal protection & emergency lawyer\n'

@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
-        android:label="vakil_partner"
+        android:label="Legally Talk Partner"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">

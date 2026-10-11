@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:vakil/main.dart';
+import 'package:vakil/widgets/app_logo.dart';
 
 void main() {
   testWidgets('Vakil app boots on splash then advances to sign-in',
@@ -18,7 +18,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
+    expect(find.byType(AppLogo), findsOneWidget);
 
     // The splash screen waits on SharedPreferences + a minimum delay before
     // navigating; step through in small increments rather than one big
@@ -29,7 +29,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    expect(find.text('Vakil'), findsOneWidget);
+    expect(find.byType(AppLogo), findsOneWidget);
     expect(find.text('Sign In'), findsOneWidget);
   });
 }

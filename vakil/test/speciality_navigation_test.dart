@@ -33,7 +33,7 @@ void main() {
   });
 
   testWidgets('each home speciality opens the Lawyers tab with its filter, and Back returns Home', (tester) async {
-    // The test font draws every letter as a wide square, so some older home
+    // The test font draws every letter as a wide square, so some home
     // rows overflow here but not on phones; ignore only those layout warnings.
     final original = FlutterError.onError;
     FlutterError.onError = (details) { if (!details.toString().contains('overflowed')) original?.call(details); };
@@ -44,13 +44,17 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
     await tester.pump(const Duration(milliseconds: 200));
 
+    // "See all" shows every speciality chip.
+    await tester.tap(find.text('See all'));
+    await tester.pump();
+
     const cards = {
-      'Legal\nSpecialist': null,
-      'Criminal\nLaw': 'Criminal Law',
-      'Family\nLaw': 'Family Law',
-      'Business\nLaw': 'Business Law',
-      'Real\nEstate': 'Real Estate',
-      'Medical\nMalpractice': 'Medical Malpractice',
+      'Legal Specialist': null,
+      'Criminal': 'Criminal Law',
+      'Family': 'Family Law',
+      'Business': 'Business Law',
+      'Real Estate': 'Real Estate',
+      'Medical': 'Medical Malpractice',
     };
     for (final entry in cards.entries) {
       expect(HomeNav.tab.value, HomeNav.home, reason: 'starts on Home before ${entry.key}');
@@ -72,9 +76,9 @@ void main() {
     }
 
     // The chip's X clears the filter.
-    await tester.ensureVisible(find.text('Criminal\nLaw'));
+    await tester.ensureVisible(find.text('Criminal'));
     await tester.pump();
-    await tester.tap(find.text('Criminal\nLaw'));
+    await tester.tap(find.text('Criminal'));
     await tester.pump(const Duration(milliseconds: 200));
     await tester.tap(find.byTooltip('Show all lawyers'));
     await tester.pump(const Duration(milliseconds: 200));

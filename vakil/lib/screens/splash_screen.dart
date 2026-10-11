@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../theme/app_colors.dart';
+import '../widgets/app_logo.dart';
 import 'create_profile_screen.dart';
 import 'home_shell.dart';
 import 'legal_help_start_screen.dart';
@@ -56,25 +56,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.splashBlue,
+      backgroundColor: AppLogo.splashBackground,
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _goNext,
-        child: Center(
-          child: Container(
-            width: 120,
-            height: 120,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.shield_outlined,
-              size: 56,
-              color: AppColors.splashBlue,
-            ),
-          ),
-        ),
+        child: const Center(child: AppLogo(width: 260)),
       ),
     );
   }

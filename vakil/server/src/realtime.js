@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 import { Server } from 'socket.io';
 import { getDb, isDbConnected } from './db.js';
-import { secret } from './routes/auth.js';
+import { adminAllowed, secret } from './routes/auth.js';
 import { chatFor, markMessages, sendChatMessage } from './services/messages.js';
 import { isAvailable, lawyerStatus } from './services/consultations.js';
 
@@ -15,7 +15,10 @@ export const isConnected = (role, id) => (connections.get(identity(role, id)) ||
 
 async function authenticate(token) {
   for (const key of [secret(), ...(process.env.JWT_PREVIOUS_SECRETS || '').split(',').filter(Boolean)]) {
-    try { return jwt.verify(token, key); } catch {}
+    let claims; try { claims = jwt.verify(token, key); } catch { continue; }
+    // Admin live updates only while the account is still an admin.
+    if (claims.role === 'admin' && !adminAllowed(await getDb().collection('admins').findOne({ _id: new ObjectId(claims.sub) }))) return null;
+    return claims;
   }
   const user = token && await getDb().collection('users').findOne({ token });
   if (user && !user.blocked) return { sub: user._id.toString(), role: 'user' };

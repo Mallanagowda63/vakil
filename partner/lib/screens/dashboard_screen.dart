@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/dashboard_data.dart';
 import '../models/profile_data.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/notification_banner.dart';
 import 'chat_list_screen.dart';
 import 'consultation_logs_screen.dart';
@@ -86,6 +87,8 @@ class _DashboardHomeTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const AppLogo(width: 112),
+          const SizedBox(height: 16),
           Row(
             children: [
               CircleAvatar(

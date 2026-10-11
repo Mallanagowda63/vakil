@@ -16,12 +16,24 @@ const toE164 = (phone) => `+91${localDigits(phone)}`;
 export const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 export const isEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const publicUser = (user) => ({ id: user._id.toString(), email: user.email || null, phone: user.phone || null, role: user.role || 'user', profileComplete: Boolean(user.profile?.fullName), trialUsed: Boolean(user.trialUsed), walletBalance: Math.round((user.walletBalance || 0) * 100) / 100, profile: user.profile || null });
+// Admin panel: only these emails (ADMIN_EMAILS, comma-separated) can sign in as admin.
+const adminEmails = () => (process.env.ADMIN_EMAILS || '').split(',').map(normalizeEmail).filter(Boolean);
+export const isAdminEmail = (email) => Boolean(email) && adminEmails().includes(normalizeEmail(email));
+// Development login (ALLOW_DEV_LOGIN) gives admin tokens only with ADMIN_LOGIN_CODE set.
+const devAdminLogin = () => process.env.ALLOW_DEV_LOGIN === 'true' && Boolean(process.env.ADMIN_LOGIN_CODE);
+// An admin token is honoured only while its account is still an admin: an email in
+// ADMIN_EMAILS, or a development (phone) admin while development admin login is on.
+export const adminAllowed = (account) => account?.role === 'admin' && (isAdminEmail(account.email) || (!account.email && devAdminLogin()));
+// Where each kind of account lives. Admins have their own collection, so an admin email
+// can also be a client's email, and old admin accounts in users no longer count.
+export const accountCollection = (role) => role === 'lawyer' ? 'lawyers' : role === 'admin' ? 'admins' : 'users';
+const otpRole = (role) => ['lawyer', 'admin'].includes(role) ? role : 'user';
 const otpHash = (email, role, code) => crypto.createHmac('sha256', secret()).update(`${role}:${email}:${code}`).digest('hex');
 
 // Finds or creates the account matching `filter` ({ email } or { phone }) and issues a JWT.
 async function signIn(filter, role) {
   const now = new Date();
-  const collection = getDb().collection(role === 'lawyer' ? 'lawyers' : 'users');
+  const collection = getDb().collection(accountCollection(role));
   const devLawyer = role === 'lawyer' && process.env.DEV_AUTO_APPROVE_LAWYERS === 'true';
   await collection.updateOne(filter, { $set: { ...filter, role, lastLoginAt: now, ...(devLawyer ? { approved: true, online: true, categories: ['Corporate Law', 'Criminal Defense', 'Family Law', 'Employment Law', 'Real Estate Law', 'Property Law'] } : {}) }, $setOnInsert: { createdAt: now, trialUsed: false, profile: null, blocked: false, ...(role === 'user' ? { walletBalance: 0 } : {}) } }, { upsert: true });
   const user = await collection.findOne(filter);
@@ -42,8 +54,9 @@ async function linkByProfileEmail(email, role) {
 // Step 1 of sign-in: email a 6-digit code. Until SMTP is configured, OTP_DEV_MODE=true
 // prints the code in the server console and returns it as devCode instead.
 authRouter.post('/otp/request', async (req, res) => {
-  const email = normalizeEmail(req.body.email); const role = req.body.role === 'lawyer' ? 'lawyer' : 'user';
+  const email = normalizeEmail(req.body.email); const role = otpRole(req.body.role);
   if (!isEmail(email)) return res.status(400).json({ error: 'Enter a valid email address' });
+  if (role === 'admin' && !isAdminEmail(email)) return res.status(403).json({ error: 'This email is not allowed to sign in to the admin panel' });
   const devMode = process.env.OTP_DEV_MODE === 'true';
   if (!mailConfigured() && !devMode) return res.status(503).json({ error: 'Email sign-in is not available yet' });
   const otps = getDb().collection('otps'); const now = new Date();
@@ -68,8 +81,9 @@ authRouter.post('/otp/request', async (req, res) => {
 
 // Step 2 of sign-in: check the code (5 attempts, 5 minutes) and log in.
 authRouter.post('/otp/verify', async (req, res) => {
-  const email = normalizeEmail(req.body.email); const role = req.body.role === 'lawyer' ? 'lawyer' : 'user';
+  const email = normalizeEmail(req.body.email); const role = otpRole(req.body.role);
   const code = String(req.body.code || '').trim(); const otps = getDb().collection('otps');
+  if (role === 'admin' && !isAdminEmail(email)) return res.status(403).json({ error: 'This email is not allowed to sign in to the admin panel' });
   const otp = isEmail(email) ? await otps.findOne({ email, role }) : null;
   if (!otp || new Date(otp.expiresAt) < new Date()) return res.status(400).json({ error: 'This code has expired. Please request a new one.' });
   if (otp.attempts >= 5) return res.status(429).json({ error: 'Too many attempts. Please request a new code.' });
@@ -82,14 +96,14 @@ authRouter.post('/otp/verify', async (req, res) => {
   catch (e) { if (!e.status) throw e; res.status(e.status).json({ error: e.message }); }
 });
 
-// Development-only login without OTP (test scripts, admin panel until Step 8).
+// Development-only login without OTP (test scripts). Never enable ALLOW_DEV_LOGIN on the live server.
 authRouter.post('/login', async (req, res) => {
   if (process.env.ALLOW_DEV_LOGIN !== 'true') return res.status(404).json({ error: 'Not found' });
   const role = ['user', 'lawyer', 'admin'].includes(req.body.role) ? req.body.role : 'user';
-  if (role === 'admin' && process.env.ADMIN_LOGIN_CODE && req.body.adminCode !== process.env.ADMIN_LOGIN_CODE) return res.status(403).json({ error: 'Invalid admin code' });
+  if (role === 'admin' && (!devAdminLogin() || req.body.adminCode !== process.env.ADMIN_LOGIN_CODE)) return res.status(403).json({ error: 'Invalid admin code' });
   if (localDigits(req.body.phone).length !== 10) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
   // Accounts created before country codes were stored keep their history.
-  const collection = getDb().collection(role === 'lawyer' ? 'lawyers' : 'users');
+  const collection = getDb().collection(accountCollection(role));
   await collection.updateOne({ phone: localDigits(req.body.phone) }, { $set: { phone: toE164(req.body.phone) } }).catch(() => {});
   try { res.json(await signIn({ phone: toE164(req.body.phone) }, role)); }
   catch (e) { if (!e.status) throw e; res.status(e.status).json({ error: e.message }); }
@@ -100,17 +114,17 @@ export async function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Missing token' });
   try {
     const claims = jwt.verify(token, secret());
-    const collection = claims.role === 'lawyer' ? 'lawyers' : 'users';
+    const collection = accountCollection(claims.role);
     const user = await getDb().collection(collection).findOne({ _id: new ObjectId(claims.sub) });
-    if (!user || user.blocked) return res.status(403).json({ error: 'Account unavailable' });
+    if (!user || user.blocked || (claims.role === 'admin' && !adminAllowed(user))) return res.status(403).json({ error: 'Account unavailable' });
     req.user = user; req.auth = claims; next();
   } catch {
     for (const previousSecret of (process.env.JWT_PREVIOUS_SECRETS || '').split(',').filter(Boolean)) {
       try {
         const claims = jwt.verify(token, previousSecret);
-        const collection = claims.role === 'lawyer' ? 'lawyers' : 'users';
+        const collection = accountCollection(claims.role);
         const user = await getDb().collection(collection).findOne({ _id: new ObjectId(claims.sub) });
-        if (!user || user.blocked) return res.status(403).json({ error: 'Account unavailable' });
+        if (!user || user.blocked || (claims.role === 'admin' && !adminAllowed(user))) return res.status(403).json({ error: 'Account unavailable' });
         req.user = user;
         req.auth = { ...claims, legacy: true };
         return next();

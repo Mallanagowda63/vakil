@@ -172,7 +172,7 @@ export async function connectDb() {
   db = client.db();
   }
   // Accounts sign in by email; the phone number is optional contact info.
-  for (const name of ['users', 'lawyers']) {
+  for (const name of ['users', 'lawyers', 'admins']) {
     await ensureIndex(db.collection(name), { phone: 1 }, { unique: true, sparse: true });
     await ensureIndex(db.collection(name), { email: 1 }, { unique: true, sparse: true });
   }

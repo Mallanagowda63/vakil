@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/primary_button.dart';
 import 'activation_pending_screen.dart';
 import 'personal_details_screen.dart';
@@ -155,26 +156,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryDark,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.shield_outlined, color: Colors.white, size: 30),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Vakil Partner',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryDark),
-                    ),
-                  ],
-                ),
-              ),
+              const Center(child: AppLogo(width: 190)),
               const SizedBox(height: 36),
               const Text(
                 'Sign In',

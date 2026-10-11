@@ -145,7 +145,7 @@ adminRouter.get('/lawyers', async (_req, res) => {
 // Approve / reject / suspend, visibility, channels and pricing overrides.
 adminRouter.patch('/lawyers/:id', async (req, res) => {
   const _id = toId(req.params.id); if (!_id) return res.status(400).json({ error: 'Invalid id' });
-  const b = req.body; const set = {}; const now = new Date(); const admin = req.user.phone || 'admin';
+  const b = req.body; const set = {}; const now = new Date(); const admin = req.user.email || req.user.phone || 'admin';
   const statuses = { approved: { approved: true, blocked: false, verificationStatus: 'approved', approvedAt: now, approvedBy: admin }, rejected: { approved: false, blocked: false, verificationStatus: 'rejected' }, suspended: { blocked: true, verificationStatus: 'suspended' }, pending: { approved: false, blocked: false, verificationStatus: 'pending' } };
   if (b.verificationStatus) { if (!statuses[b.verificationStatus]) return res.status(400).json({ error: 'Unknown status' }); Object.assign(set, statuses[b.verificationStatus]); }
   if ('approved' in b) Object.assign(set, b.approved ? statuses.approved : { approved: false, verificationStatus: 'pending' });

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 import '../services/partner_auth_service.dart';
 import 'activation_pending_screen.dart';
 import 'login_otp_screen.dart';
@@ -42,39 +42,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryDark,
+      backgroundColor: AppLogo.splashBackground,
       body: Center(
-        child: ScaleTransition(
-          scale: _scale,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.shield_outlined,
-                  size: 46,
-                  color: AppColors.primaryDark,
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Vakil Partner',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: ScaleTransition(scale: _scale, child: const AppLogo(width: 260)),
       ),
     );
   }

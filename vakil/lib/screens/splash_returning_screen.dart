@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_text_styles.dart';
+import '../widgets/app_logo.dart';
 import 'home_shell.dart';
 
 /// Shown on subsequent app opens once the user has completed their
@@ -36,45 +35,11 @@ class _SplashReturningScreenState extends State<SplashReturningScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.splashBlue,
+      backgroundColor: AppLogo.splashBackground,
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _skip,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 128,
-                height: 128,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.black, width: 3),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 68,
-                    height: 68,
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(Icons.shield_outlined,
-                        color: Colors.white, size: 32),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text('Vakil', style: AppText.h1(Colors.white).copyWith(fontSize: 30)),
-              const SizedBox(height: 4),
-              Text(
-                'Let\'s Talk Our Rights',
-                style: AppText.bodySmall(Colors.white.withValues(alpha: 0.8)),
-              ),
-            ],
-          ),
-        ),
+        child: const Center(child: AppLogo(width: 260)),
       ),
     );
   }

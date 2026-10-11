@@ -10,7 +10,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(VakilPartnerApp(dashboard: DashboardController()));
 
-    expect(find.text('Vakil Partner'), findsOneWidget);
+    expect(find.bySemanticsLabel('Legally Talk'), findsOneWidget);
 
     // Let the splash screen's navigation timer fire and settle on the
     // sign-in screen.

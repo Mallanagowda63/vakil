@@ -45,7 +45,7 @@ class VakilPartnerApp extends StatelessWidget {
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) => MaterialApp(
-          title: 'Vakil Partner',
+          title: 'Legally Talk Partner',
           debugShowCheckedModeBanner: false,
           navigatorKey: navigatorKey,
           scaffoldMessengerKey: messengerKey,

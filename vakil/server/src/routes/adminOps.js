@@ -20,7 +20,8 @@ const run = (fn) => async (req, res) => {
 };
 const sum = (rows, get) => rows.reduce((n, r) => n + (Number(get(r)) || 0), 0);
 const round2 = (n) => Math.round(n * 100) / 100;
-const adminOf = (req) => ({ id: req.user._id, phone: req.user.phone || null });
+// `phone` is who did it in audit fields: the admin's email (older admins: phone).
+const adminOf = (req) => ({ id: req.user._id, phone: req.user.email || req.user.phone || null });
 const col = (name) => getDb().collection(name);
 
 // ---------------------------------------------------------------- settings

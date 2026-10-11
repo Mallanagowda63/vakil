@@ -2,25 +2,20 @@ const baseUrl = import.meta.env.VITE_API_URL;
 if (!baseUrl) console.error('VITE_API_URL is not set. Copy admin/.env.example to admin/.env.');
 export const token = () => localStorage.getItem('vakilAdminToken');
 
-// Development sign-in (no admin accounts yet). Parallel requests share one sign-in.
-let signingIn = null;
-function devSignIn() {
-  signingIn ??= adminLogin('9999999999', '').finally(() => { signingIn = null; });
-  return signingIn;
+export const adminEmail = () => localStorage.getItem('vakilAdminEmail') || '';
+
+// No token, or the server refused it (expired, or no longer an admin): back to the sign-in page.
+function signOut() {
+  localStorage.removeItem('vakilAdminToken'); localStorage.removeItem('vakilAdminEmail');
+  if (!location.pathname.startsWith('/login')) location.assign('/login');
 }
 
-// A token from a reset database or an expired one gets 401/403: sign in again once and retry.
 async function send(path, init) {
-  if (!token()) await devSignIn();
-  const request = () => fetch(`${baseUrl}${path}`, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token()}` } });
-  let response = await request();
+  if (!token()) { signOut(); throw new Error('Please sign in'); }
+  const response = await fetch(`${baseUrl}${path}`, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token()}` } });
   if (response.status === 401 || response.status === 403) {
     const body = await response.clone().json().catch(() => ({}));
-    if (response.status === 401 || body.error === 'Account unavailable') {
-      localStorage.removeItem('vakilAdminToken');
-      await devSignIn();
-      response = await request();
-    }
+    if (response.status === 401 || body.error === 'Account unavailable') { signOut(); throw new Error('Please sign in again'); }
   }
   return response;
 }
@@ -32,12 +27,23 @@ export async function api(path, options = {}) {
   return response.status === 204 ? null : response.json();
 }
 
-export async function adminLogin(phone, adminCode) {
-  const response = await fetch(`${baseUrl}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, role: 'admin', adminCode }) });
+async function post(path, body) {
+  const response = await fetch(`${baseUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Admin sign-in failed');
-  localStorage.setItem('vakilAdminToken', data.token); return data;
+  if (!response.ok) throw new Error(data.error || `The server is not responding (${response.status}). It may be waking up; try again in a minute.`);
+  return data;
 }
+
+// Admin sign-in, step 1: email a 6-digit code (only emails in the server's ADMIN_EMAILS).
+export const requestAdminCode = (email) => post('/api/auth/otp/request', { email, role: 'admin' });
+
+// Step 2: check the code and keep the admin token.
+export async function verifyAdminCode(email, code) {
+  const data = await post('/api/auth/otp/verify', { email, code, role: 'admin' });
+  localStorage.setItem('vakilAdminToken', data.token); localStorage.setItem('vakilAdminEmail', data.user.email || email);
+  return data;
+}
+export function adminSignOut() { localStorage.removeItem('vakilAdminToken'); localStorage.removeItem('vakilAdminEmail'); }
 export { baseUrl };
 
 // Downloads a CSV export (needs the admin token, so not a plain link).
