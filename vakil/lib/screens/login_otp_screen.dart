@@ -13,7 +13,6 @@ import 'home_shell.dart';
 import 'legal_help_start_screen.dart';
 import 'privacy_policy_detail_screen.dart';
 import 'terms_of_service_detail_screen.dart';
-import '../widgets/server_address_dialog.dart';
 
 class LoginOtpScreen extends StatefulWidget {
   const LoginOtpScreen({super.key});
@@ -223,46 +222,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                 background: Colors.black,
                 onTap: _loading ? null : _continue,
               ),
-              Center(
-                child: TextButton.icon(
-                  onPressed: () => showFindServerDialog(context),
-                  icon: const Icon(Icons.dns_outlined, size: 16, color: AppColors.textMuted),
-                  label: Text('Find server', style: AppText.bodySmall(AppColors.textMuted)),
-                ),
-              ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                      child: Divider(color: AppColors.darkStroke)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Text(
-                      'OR SECURELY ACCESS VIA',
-                      style: AppText.bodySmall(AppColors.textFaint),
-                    ),
-                  ),
-                  Expanded(
-                      child: Divider(color: AppColors.darkStroke)),
-                ],
-              ),
-              const SizedBox(height: 18),
-              OutlineButton(
-                label: 'Continue with Google',
-                onTap: () {},
-                background: Colors.white,
-                foreground: AppColors.textDark,
-                leading: const _GoogleG(),
-              ),
-              const SizedBox(height: 12),
-              OutlineButton(
-                label: 'Continue with Apple',
-                onTap: () {},
-                background: Colors.white,
-                foreground: AppColors.textDark,
-                leading: const Icon(Icons.apple, size: 20),
-              ),
-              const SizedBox(height: 18),
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
@@ -324,22 +284,6 @@ class _BrandCard extends StatelessWidget {
             style: AppText.bodySmall(AppColors.textMuted),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _GoogleG extends StatelessWidget {
-  const _GoogleG();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Text(
-      'G',
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w800,
-        color: Color(0xFF4285F4),
       ),
     );
   }

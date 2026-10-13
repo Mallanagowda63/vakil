@@ -10,7 +10,6 @@ import '../widgets/primary_button.dart';
 import 'activation_pending_screen.dart';
 import 'personal_details_screen.dart';
 import '../services/partner_auth_service.dart';
-import '../widgets/server_address_dialog.dart';
 
 
 class LoginOtpScreen extends StatefulWidget {
@@ -165,12 +164,6 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     }
   }
 
-  void _unimplementedSocial(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider sign-in requires backend setup — coming soon.')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -217,13 +210,6 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                 ),
                 const SizedBox(height: 22),
                 PrimaryButton(label: 'Send code', loading: _sending, onPressed: _sending ? null : _sendOtp),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: () => showFindServerDialog(context),
-                    icon: const Icon(Icons.dns_outlined, size: 16),
-                    label: const Text('Find server'),
-                  ),
-                ),
               ] else ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -270,30 +256,6 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                 PrimaryButton(label: 'Verify & Continue', loading: _verifying, onPressed: _verifying ? null : _verifyOtp),
               ],
               const SizedBox(height: 28),
-              const Row(
-                children: [
-                  Expanded(child: Divider()),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('or', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
-                  ),
-                  Expanded(child: Divider()),
-                ],
-              ),
-              const SizedBox(height: 20),
-              PrimaryButton(
-                label: 'Continue with Google',
-                outlined: true,
-                icon: Icons.g_mobiledata,
-                onPressed: () => _unimplementedSocial('Google'),
-              ),
-              const SizedBox(height: 12),
-              PrimaryButton(
-                label: 'Continue with Apple',
-                outlined: true,
-                icon: Icons.apple,
-                onPressed: () => _unimplementedSocial('Apple'),
-              ),
               const SizedBox(height: 28),
               Center(
                 child: TextButton(
