@@ -47,8 +47,21 @@ async function linkByProfileEmail(email, role) {
   if (role !== 'user') return;
   const users = getDb().collection('users');
   if (await users.findOne({ email })) return;
+  await users.updateOne(unlinkedProfileEmail(email), { $set: { email } });
+}
+
+// A phone-era client account whose profile has this email (any letter case).
+function unlinkedProfileEmail(email) {
   const pattern = `^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`;
-  await users.updateOne({ email: { $exists: false }, 'profile.email': { $regex: pattern, $options: 'i' } }, { $set: { email } });
+  return { email: { $exists: false }, 'profile.email': { $regex: pattern, $options: 'i' } };
+}
+
+// An app account exists for this email (clients who signed up by phone count when
+// their profile has the email; they are linked on sign-in).
+async function emailRegistered(email, role) {
+  const collection = getDb().collection(accountCollection(role));
+  if (await collection.findOne({ email })) return true;
+  return role === 'user' && Boolean(await collection.findOne(unlinkedProfileEmail(email)));
 }
 
 // Step 1 of sign-in: email a 6-digit code. Until SMTP is configured, OTP_DEV_MODE=true
@@ -57,6 +70,10 @@ authRouter.post('/otp/request', async (req, res) => {
   const email = normalizeEmail(req.body.email); const role = otpRole(req.body.role);
   if (!isEmail(email)) return res.status(400).json({ error: 'Enter a valid email address' });
   if (role === 'admin' && !isAdminEmail(email)) return res.status(403).json({ error: 'This email is not allowed to sign in to the admin panel' });
+  // Unknown emails get a "not registered" reply; the apps then ask before signing up (register: true).
+  if (role !== 'admin' && req.body.register !== true && !(await emailRegistered(email, role))) {
+    return res.status(404).json({ error: 'This email is not registered', notRegistered: true });
+  }
   const devMode = process.env.OTP_DEV_MODE === 'true';
   if (!mailConfigured() && !devMode) return res.status(503).json({ error: 'Email sign-in is not available yet' });
   const otps = getDb().collection('otps'); const now = new Date();

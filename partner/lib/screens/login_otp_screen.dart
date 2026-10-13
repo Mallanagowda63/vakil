@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../models/registration_data.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/primary_button.dart';
@@ -12,11 +14,13 @@ import '../widgets/server_address_dialog.dart';
 
 
 class LoginOtpScreen extends StatefulWidget {
-  const LoginOtpScreen({super.key, this.initialEmail, this.message});
+  const LoginOtpScreen({super.key, this.initialEmail, this.message, this.register = false});
   /// Prefilled email, e.g. the one just used in the registration form.
   final String? initialEmail;
   /// Shown above the form, e.g. why signing in is needed now.
   final String? message;
+  /// True right after the registration form: the email is new, so no "not registered" check.
+  final bool register;
 
   @override
   State<LoginOtpScreen> createState() => _LoginOtpScreenState();
@@ -78,10 +82,11 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     setState(() => _sending = true);
     Map<String, dynamic> res;
     try {
-      res = await PartnerAuthService.instance.requestOtp(_email);
+      res = await PartnerAuthService.instance.requestOtp(_email, register: widget.register);
     } on PartnerNetworkException catch (error) {
       if (!mounted) return;
       setState(() => _sending = false);
+      if (error.statusCode == 404) return _askToRegister();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
       return;
     }
@@ -98,6 +103,25 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) FocusScope.of(context).requestFocus(_otpFocus.first);
     });
+  }
+
+  /// The email has no partner account yet: offer the registration form (or fix a typo).
+  Future<void> _askToRegister() async {
+    final email = _email;
+    final register = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Email not registered'),
+        content: Text('$email is not registered as a Legally Talk Partner. Do you want to register as a new partner with this email?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Register')),
+        ],
+      ),
+    );
+    if (register != true || !mounted) return;
+    context.read<RegistrationData>().email = email;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PersonalDetailsScreen()));
   }
 
   Future<void> _verifyOtp() async {
@@ -278,7 +302,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                   ),
                   child: const Text.rich(
                     TextSpan(
-                      text: 'New to Vakil Partner? ',
+                      text: 'New to Legally Talk Partner? ',
                       style: TextStyle(color: AppColors.textSecondary),
                       children: [
                         TextSpan(

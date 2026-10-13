@@ -32,7 +32,7 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
     if (!mounted) return;
     final signedIn = PartnerAuthService.instance.token != null;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => signedIn ? const ActivationPendingScreen() : LoginOtpScreen(initialEmail: data.email, message: 'Last step: confirm your email with the 6-digit code. Your registration is then sent to the Vakil team for verification.')),
+      MaterialPageRoute(builder: (_) => signedIn ? const ActivationPendingScreen() : LoginOtpScreen(initialEmail: data.email, register: true, message: 'Last step: confirm your email with the 6-digit code. Your registration is then sent to the Vakil team for verification.')),
       (route) => false,
     );
   }

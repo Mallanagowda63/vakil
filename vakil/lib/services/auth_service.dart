@@ -44,8 +44,10 @@ class AuthService {
   }
 
   /// Emails a 6-digit code. Returns the server's reply; in development (no
-  /// email service yet) it includes the code as devCode.
-  Future<Map<String, dynamic>> requestOtp(String email) => _api.post('/api/auth/otp/request', {'email': email, 'role': 'user'});
+  /// email service yet) it includes the code as devCode. An email with no account
+  /// fails with 404 unless [register] is true (a new sign-up).
+  Future<Map<String, dynamic>> requestOtp(String email, {bool register = false}) =>
+      _api.post('/api/auth/otp/request', {'email': email, 'role': 'user', if (register) 'register': true});
 
   /// Verifies the code, stores the session and opens the realtime connection.
   Future<void> verifyOtp(String email, String code) async {

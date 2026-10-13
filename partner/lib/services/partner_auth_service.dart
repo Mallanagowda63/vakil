@@ -41,7 +41,9 @@ class PartnerAuthService {
   }
 
   /// Emails the code. In development (no email service yet) the reply includes it as devCode.
-  Future<Map<String, dynamic>> requestOtp(String email) => _call('POST', '/api/auth/otp/request', body: {'email': email, 'role': 'lawyer'});
+  /// An email with no account fails with 404 unless [register] is true (a new registration).
+  Future<Map<String, dynamic>> requestOtp(String email, {bool register = false}) =>
+      _call('POST', '/api/auth/otp/request', body: {'email': email, 'role': 'lawyer', if (register) 'register': true});
 
   Future<void> verifyOtp(String email, String code) async {
     final res = await _call('POST', '/api/auth/otp/verify', body: {'email': email, 'role': 'lawyer', 'code': code});

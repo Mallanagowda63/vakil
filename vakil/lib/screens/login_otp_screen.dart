@@ -60,7 +60,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
   /// The email address typed by the user; the sign-in code is sent there.
   String get _email => _emailController.text.trim().toLowerCase();
 
-  Future<void> _sendCode() async {
+  Future<void> _sendCode({bool register = false}) async {
     final email = _email;
     if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
       _showSnack('Enter a valid email address');
@@ -68,7 +68,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     }
     setState(() => _loading = true);
     try {
-      final res = await AuthService.instance.requestOtp(email);
+      final res = await AuthService.instance.requestOtp(email, register: register || _codeSentTo == email);
       if (!mounted) return;
       setState(() {
         _codeSentTo = email;
@@ -78,10 +78,31 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
       });
       _startResendTimer((res['resendInSeconds'] as num?)?.toInt() ?? 30);
     } on ApiException catch (e) {
+      if (e.statusCode == 404 && mounted) {
+        setState(() => _loading = false);
+        if (await _askToRegister(email)) await _sendCode(register: true);
+        return;
+      }
       _showSnack(e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// The email has no account yet: offer to create one (or fix a typo).
+  Future<bool> _askToRegister(String email) async {
+    final register = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Email not registered'),
+        content: Text('$email is not registered with Legally Talk. Do you want to create a new account with this email?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Register')),
+        ],
+      ),
+    );
+    return register == true;
   }
 
   void _startResendTimer(int seconds) {
