@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:flutter_cashfree_pg_sdk/api/cferrorresponse/cferrorresponse.dart';
+import 'package:flutter_cashfree_pg_sdk/api/cfpayment/cfwebcheckoutpayment.dart';
+import 'package:flutter_cashfree_pg_sdk/api/cfpaymentgateway/cfpaymentgatewayservice.dart';
+import 'package:flutter_cashfree_pg_sdk/api/cfsession/cfsession.dart';
+import 'package:flutter_cashfree_pg_sdk/utils/cfenums.dart';
 import '../state/wallet_state.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
@@ -39,8 +43,8 @@ class WalletService extends ChangeNotifier {
   List<int> rechargeOptions = const [100, 200, 500, 1000];
   double minRecharge = 1;
   double maxRecharge = 50000;
-  /// razorpay, test (stand-in recharge on a development server) or unavailable.
-  String paymentMode = 'razorpay';
+  /// cashfree, test (stand-in recharge on a development server) or unavailable.
+  String paymentMode = 'cashfree';
   bool loaded = false;
   StreamSubscription<SocketEvent>? _events;
 
@@ -88,42 +92,39 @@ class WalletService extends ChangeNotifier {
     if (token == null) throw const ApiException('Please sign in again');
     final order = await _api.post('/api/wallet/order', {'amount': amount}, token: token);
     final orderId = order['orderId'].toString();
-    Map<String, dynamic> proof = {'orderId': orderId};
-    if (order['mode'] == 'razorpay') {
-      proof = await _checkout(order);
-    }
-    final result = await _api.post('/api/wallet/verify', proof, token: token);
+    if (order['mode'] == 'cashfree') await _checkout(order);
+    // The server checks the order with Cashfree before adding any money.
+    final result = await _api.post('/api/wallet/verify', {'orderId': orderId}, token: token);
     WalletState.balance = (result['balance'] as num?)?.toDouble() ?? WalletState.balance;
     await refresh();
     return (result['amount'] as num?)?.toDouble() ?? amount;
   }
 
-  /// Opens Razorpay Checkout for a server-created order and waits for the result.
-  Future<Map<String, dynamic>> _checkout(Map<String, dynamic> order) {
-    final completer = Completer<Map<String, dynamic>>();
-    final razorpay = Razorpay();
+  /// Opens Cashfree Checkout for a server-created order and waits until the
+  /// user finishes it. A failed or cancelled payment is reported to the server,
+  /// which still checks with Cashfree in case the money was taken.
+  Future<void> _checkout(Map<String, dynamic> order) async {
+    final completer = Completer<void>();
     final orderId = order['orderId'].toString();
-    razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, (PaymentSuccessResponse r) {
-      if (!completer.isCompleted) completer.complete({'orderId': r.orderId ?? orderId, 'razorpayPaymentId': r.paymentId, 'signature': r.signature});
+    final gateway = CFPaymentGatewayService();
+    gateway.setCallback((_) {
+      if (!completer.isCompleted) completer.complete();
+    }, (CFErrorResponse error, _) async {
+      final res = await _api
+          .post('/api/wallet/cancel', {'orderId': orderId, 'reason': error.getMessage() ?? 'Payment failed'}, token: AuthService.instance.token)
+          .catchError((_) => <String, dynamic>{});
+      if (completer.isCompleted) return;
+      if (res['credited'] == true) return completer.complete();
+      final cancelled = (error.getCode() ?? '').toLowerCase().contains('cancel') || (error.getMessage() ?? '').toLowerCase().contains('cancel');
+      completer.completeError(ApiException(cancelled ? 'Payment cancelled' : 'Payment failed. No money was added.'));
     });
-    razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, (PaymentFailureResponse r) {
-      final cancelled = r.code == Razorpay.PAYMENT_CANCELLED;
-      _api.post('/api/wallet/cancel', {'orderId': orderId, 'reason': r.message ?? 'Payment failed'}, token: AuthService.instance.token).catchError((_) => <String, dynamic>{});
-      if (!completer.isCompleted) completer.completeError(ApiException(cancelled ? 'Payment cancelled' : 'Payment failed. No money was added.'));
-    });
-    razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (ExternalWalletResponse r) {});
-    final prefill = Map<String, dynamic>.from(order['prefill'] as Map? ?? const {});
-    razorpay.open({
-      'key': order['razorpayKeyId'],
-      'order_id': orderId,
-      'amount': order['amountPaise'],
-      'currency': 'INR',
-      'name': 'Vakil',
-      'description': 'Wallet recharge',
-      'prefill': {'contact': prefill['contact'] ?? '', 'email': prefill['email'] ?? ''},
-      'theme': {'color': '#2463EB'},
-    });
-    return completer.future.whenComplete(razorpay.clear);
+    final session = CFSessionBuilder()
+        .setEnvironment(order['cashfreeEnvironment'] == 'PRODUCTION' ? CFEnvironment.PRODUCTION : CFEnvironment.SANDBOX)
+        .setOrderId(orderId)
+        .setPaymentSessionId(order['paymentSessionId'].toString())
+        .build();
+    gateway.doPayment(CFWebCheckoutPaymentBuilder().setSession(session).build());
+    return completer.future;
   }
 
   void clear() {

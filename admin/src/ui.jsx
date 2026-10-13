@@ -80,7 +80,7 @@ export const Note = ({ children, tone = 'info' }) => <div className={`ld-note ${
 export const ErrorNote = ({ error }) => error ? <Note tone="bad">Could not load data: {error}</Note> : null;
 
 // Shown on money pages until the apps record payments.
-export const NotChargingNote = () => <Note>No payments recorded yet. Money comes in when users recharge their wallets (Razorpay; a test recharge until the Razorpay keys are added) and is charged per minute during paid chats and calls. The figures below fill in by themselves.</Note>;
+export const NotChargingNote = () => <Note>No payments recorded yet. Money comes in when users recharge their wallets (through Cashfree) and is charged per minute during paid chats and calls. The figures below fill in by themselves.</Note>;
 
 export const ExportButton = ({ path, name, label: text = 'Export CSV', primary = true }) => <button className={primary ? 'primary' : 'secondary'} onClick={() => download(path, name).catch((e) => alert(e.message))}><Download size={14} /> {text}</button>;
 

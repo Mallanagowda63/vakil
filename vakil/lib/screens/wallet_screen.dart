@@ -8,7 +8,7 @@ import '../theme/app_text_styles.dart';
 import '../utils/currency.dart';
 
 /// Wallet: current balance, recharge (preset amounts or a custom amount,
-/// paid through Razorpay), and the transaction history.
+/// paid through Cashfree), and the transaction history.
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key, this.message});
   /// Why the wallet was opened, e.g. "Add money to chat with this lawyer".
