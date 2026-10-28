@@ -192,14 +192,11 @@ class LawyerRow extends StatelessWidget {
             LawyerChannels(lawyer: lawyer),
             const SizedBox(height: 6),
             PriceTag(ratePerMinute: lawyer.ratePerMinute),
-            if (lawyer.callRatePerMinute > 0) Padding(padding: const EdgeInsets.only(top: 3), child: Text('Voice call ${formatRate(lawyer.callRatePerMinute)}', style: AppText.caption(AppColors.textGray))),
             if (lawyer.ratingAverage != null) Padding(padding: const EdgeInsets.only(top: 3), child: RatingLine(average: lawyer.ratingAverage!, count: lawyer.ratingCount)),
           ]),
         ),
         Column(mainAxisSize: MainAxisSize.min, children: [
           ChatCallButton(lawyer: lawyer),
-          const SizedBox(height: 6),
-          ChatCallButton(lawyer: lawyer, call: true),
         ]),
       ]),
     ),
@@ -241,8 +238,6 @@ class LawyerChannels extends StatelessWidget {
       Text(lawyer.online ? 'Online' : 'Offline', style: AppText.bodySmall(lawyer.online ? AppColors.greenAccent : AppColors.textGraySoft)),
       const SizedBox(width: 8),
       channel(Icons.chat_bubble_outline, lawyer.chatOnline, lawyer.chatOnline ? 'Taking chats' : 'Not taking chats'),
-      const SizedBox(width: 6),
-      channel(Icons.call_outlined, lawyer.callOnline, lawyer.callOnline ? 'Taking calls' : 'Not taking calls'),
     ]);
   }
 }
