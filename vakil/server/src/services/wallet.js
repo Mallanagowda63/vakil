@@ -202,7 +202,7 @@ export async function rateOf(lawyer) {
 }
 
 // Voice calls have one platform price (Admin Panel → Pricing, "Call per minute").
-export const DEFAULT_CALL_RATE = 40;
+export const DEFAULT_CALL_RATE = 25;
 export async function callRateOf() {
   const pricing = await getDb().collection('settings').findOne({ key: 'pricing' });
   const rate = Number(pricing?.value?.callPerMinute);

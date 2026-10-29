@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/chat_models.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
-import '../services/call_service.dart';
 import '../services/consultation_service.dart';
 import '../services/realtime_service.dart';
 import '../state/free_trial_state.dart';
@@ -11,6 +10,7 @@ import '../state/wallet_state.dart';
 import '../utils/currency.dart';
 import '../widgets/add_time_sheet.dart';
 import '../widgets/chat_attachments.dart';
+import '../widgets/voice_message.dart';
 import '../widgets/wallet_widgets.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -27,7 +27,7 @@ class LiveConsultationChatScreen extends StatefulWidget {
   final String requestId;
   final String title;
   final String? photoUrl;
-  /// Opened from a call request: start the voice call as soon as the chat loads.
+  /// Opened from a voice request (shows the voice-message hint before the chat loads).
   final bool startCall;
   @override
   State<LiveConsultationChatScreen> createState() => _State();
@@ -70,7 +70,6 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
   double _totalAmount = 0;
   String? _endReason;
 
-  bool _callStarted = false;
   bool get _paid => !_isTrial && (_rate ?? 0) > 0;
   /// A call consultation: a call button and no message box. A chat one: the opposite.
   bool get _isCall => _chat?.isCall ?? widget.startCall;
@@ -126,7 +125,6 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
       });
       _realtime.emit('join_chat', {'requestId': _id});
       _markRead();
-      if (widget.startCall && !_callStarted && !_ended) { _callStarted = true; _startCall(); }
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     }
@@ -296,14 +294,6 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
 
   void _scrollToBottom() => WidgetsBinding.instance.addPostFrameCallback((_) { if (_scroll.hasClients) _scroll.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut); });
 
-  Future<void> _startCall() async {
-    final error = await CallService.instance.startCall(requestId: _id, otherName: _chat?.other.name ?? widget.title, otherPhotoUrl: _chat?.other.photoUrl ?? widget.photoUrl);
-    if (error == null || !mounted) return;
-    // 402 from the server: the wallet can't cover another minute.
-    if (error == 'Insufficient balance') { openWallet(context, message: 'Add money to call this lawyer'); return; }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-  }
-
   Future<void> _addTime() async {
     final seconds = await showAddTimeSheet(context, requestId: _id, rate: _rate);
     if (seconds == null || !mounted) return;
@@ -314,7 +304,7 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
   Future<void> _confirmEnd() async {
     final end = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
       title: Text(_isCall ? 'End consultation?' : 'End chat?'),
-      content: Text(_isCall ? 'You will not be able to call ${_chat?.other.name ?? widget.title} again in this consultation.' : 'You will not be able to send more messages to ${_chat?.other.name ?? widget.title}.'),
+      content: Text('You will not be able to send more messages to ${_chat?.other.name ?? widget.title}.'),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(context, true), child: Text(_isCall ? 'End' : 'End Chat'))],
     ));
     if (end != true) return;
@@ -364,7 +354,6 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
           ])),
         ]),
         actions: [
-          if (_isCall) IconButton(tooltip: 'Voice call', onPressed: _ended || _loading ? null : _startCall, icon: const Icon(Icons.call_outlined)),
           if (!_ended && !_isTrial && !_loading)
             PopupMenuButton<String>(onSelected: (_) => _confirmEnd(), itemBuilder: (_) => [PopupMenuItem(value: 'end', child: Text(_isCall ? 'End consultation' : 'End Chat'))]),
         ],
@@ -387,12 +376,23 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
           valueListenable: WalletState.balanceListenable,
           builder: (_, balance, _) => balance >= _rate! ? const SizedBox.shrink() : _LowBalanceBanner(onRecharge: () => openWallet(context)),
         ),
+        // Voice consultation: no live call; the mic is how you talk.
+        if (_isCall && !_ended && !_loading) Container(
+          width: double.infinity,
+          color: const Color(0xFFEFF6FF),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+          child: Row(children: [
+            const Icon(Icons.mic_rounded, size: 16, color: AppColors.blueAccent),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Voice consultation · hold the mic to send a voice message', style: AppText.caption(AppColors.blueAccent).copyWith(fontWeight: FontWeight.w600))),
+          ]),
+        ),
         Expanded(child: _loading
             ? const PageLoader()
             : _error != null
                 ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: () { setState(() => _loading = true); _load(); }, child: const Text('Try again'))]))
                 : items.isEmpty
-                    ? Center(child: Text(_ended ? (_isCall ? 'This consultation has ended.' : 'This chat has ended.') : _isCall ? 'Your lawyer accepted. Tap Call to talk.' : 'Your lawyer accepted. Say hello!', style: AppText.body(AppColors.textGray)))
+                    ? Center(child: Text(_ended ? (_isCall ? 'This consultation has ended.' : 'This chat has ended.') : _isCall ? 'Your lawyer accepted. Hold the mic to send a voice message.' : 'Your lawyer accepted. Say hello!', style: AppText.body(AppColors.textGray)))
                     : ListView.builder(
                         controller: _scroll,
                         reverse: true,
@@ -411,23 +411,10 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
                           ]);
                         },
                       )),
-        SafeArea(top: false, child: _ended ? _endedBar(name) : _loading ? const SizedBox.shrink() : _isCall ? _callBar(name) : _inputBar()),
+        SafeArea(top: false, child: _ended ? _endedBar(name) : _loading ? const SizedBox.shrink() : _inputBar()),
       ]),
     );
   }
-
-  /// Call consultation: calling replaces the message box.
-  Widget _callBar(String name) => Container(
-        width: double.infinity,
-        color: Colors.white,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-        child: FilledButton.icon(
-          onPressed: _startCall,
-          style: FilledButton.styleFrom(backgroundColor: AppColors.greenAccent, minimumSize: const Size.fromHeight(48)),
-          icon: const Icon(Icons.call),
-          label: Text('Call $name'),
-        ),
-      );
 
   Widget _inputBar() => Container(
         color: Colors.white,
@@ -443,7 +430,13 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
             decoration: InputDecoration(hintText: 'Type a message', filled: true, fillColor: const Color(0xFFF1F3F6), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none)),
           )),
           const SizedBox(width: 6),
-          IconButton.filled(onPressed: _send, icon: const Icon(Icons.send)),
+          // Empty box: the mic (hold to record). Typed text: send.
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _input,
+            builder: (context, value, child) => value.text.trim().isEmpty
+                ? VoiceRecordButton(requestId: _id, token: AuthService.instance.token, onSent: (m) { setState(() => _insert(m)); _scrollToBottom(); })
+                : IconButton.filled(onPressed: _send, icon: const Icon(Icons.send)),
+          ),
         ]),
       );
 
@@ -452,7 +445,7 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
         color: Colors.white,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(_isTrial ? 'Your free trial has ended' : _timed ? (_isCall ? 'Call time is over' : 'Chat time is over') : (_isCall ? 'Consultation ended' : 'Chat ended'), style: AppText.bodyMedium(AppColors.textDark)),
+          Text(_isTrial ? 'Your free trial has ended' : _timed ? (_isCall ? 'Voice consultation time is over' : 'Chat time is over') : (_isCall ? 'Consultation ended' : 'Chat ended'), style: AppText.bodyMedium(AppColors.textDark)),
           if (_messages.any((m) => m.hasLiveAttachment)) Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text('Shared files are deleted 5 minutes after the chat ends. Save anything you need now.', textAlign: TextAlign.center, style: AppText.caption(AppColors.amber).copyWith(fontWeight: FontWeight.w600)),
@@ -535,7 +528,7 @@ class _TimeWarningBanner extends StatelessWidget {
         child: Row(children: [
           const Icon(Icons.timer_off_outlined, size: 18, color: AppColors.redAccent),
           const SizedBox(width: 8),
-          Expanded(child: Text(trial ? 'Your free minute is ending. Buy time to keep chatting and calling.' : 'Less than 1 minute left. Add time to keep chatting and calling.', style: AppText.caption(AppColors.textDark).copyWith(fontWeight: FontWeight.w600))),
+          Expanded(child: Text(trial ? 'Your free minute is ending. Buy time to keep chatting.' : 'Less than 1 minute left. Add time to keep chatting.', style: AppText.caption(AppColors.textDark).copyWith(fontWeight: FontWeight.w600))),
           FilledButton(onPressed: onAddTime, style: FilledButton.styleFrom(visualDensity: VisualDensity.compact), child: Text(trial ? 'Buy time' : 'Add time')),
         ]),
       );

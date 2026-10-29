@@ -243,6 +243,8 @@ class _SuggestedLawyerCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(children: [
                 _Price(icon: Icons.chat_bubble_outline, label: 'Chat ${formatRate(l.ratePerMinute)}', on: l.chatOnline),
+                const SizedBox(width: 8),
+                _Price(icon: Icons.mic_none_rounded, label: 'Voice ${formatRate(l.rateFor(call: true))}', on: l.callOnline),
               ]),
             ]),
           ),

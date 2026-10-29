@@ -8,7 +8,7 @@ class LawyerSummary {
   final List<String> categories;
   /// Taking chat requests right now (lawyer's "Chat available" switch).
   final bool chatOnline;
-  /// Taking voice calls right now ("Call available").
+  /// Taking voice consultations (voice messages) right now.
   final bool callOnline;
   /// Taking chats or calls.
   bool get online => chatOnline || callOnline;
@@ -18,7 +18,7 @@ class LawyerSummary {
   final bool active;
   /// Chat price after the free trial, in rupees per minute.
   final double ratePerMinute;
-  /// Voice call price per minute (one platform price, ₹40).
+  /// Voice consultation price per minute (one platform price, ₹25).
   final double callRatePerMinute;
   /// Clients' average rating (1–5) and how many rated; null before the first rating.
   final double? ratingAverage;
@@ -31,7 +31,7 @@ class LawyerSummary {
   /// Consultations finished on Vakil.
   final int consultationsDone;
 
-  /// The price of a chat, or of a voice call when [call].
+  /// The price of a chat, or of a voice consultation when [call].
   double rateFor({bool call = false}) => call && callRatePerMinute > 0 ? callRatePerMinute : ratePerMinute;
 
   /// Search: name, practice areas, city and languages.
@@ -104,6 +104,7 @@ class ChatMessage {
   bool get isCall => type == 'call';
   bool get isImage => type == 'image' && attachment != null;
   bool get isFile => type == 'file' && attachment != null;
+  bool get isVoice => type == 'audio' && attachment != null;
   /// A photo or file the server has not deleted yet.
   bool get hasLiveAttachment => attachment != null && !attachment!.deleted;
 
@@ -129,15 +130,17 @@ class ChatMessage {
 
 /// A photo or file sent in a chat; the bytes are fetched from the server with the sign-in token.
 class ChatAttachment {
-  const ChatAttachment({required this.id, required this.fileName, required this.contentType, required this.size, this.deleted = false});
+  const ChatAttachment({required this.id, required this.fileName, required this.contentType, required this.size, this.deleted = false, this.durationSeconds});
   final String id;
   final String fileName;
   final String contentType;
   final int size;
   /// The server deletes chat files 5 minutes after the chat ends.
   final bool deleted;
+  /// Length of a voice message.
+  final int? durationSeconds;
 
-  ChatAttachment markDeleted() => ChatAttachment(id: id, fileName: fileName, contentType: contentType, size: size, deleted: true);
+  ChatAttachment markDeleted() => ChatAttachment(id: id, fileName: fileName, contentType: contentType, size: size, deleted: true, durationSeconds: durationSeconds);
 
   String get sizeLabel => size >= 1024 * 1024 ? '${(size / (1024 * 1024)).toStringAsFixed(1)} MB' : '${(size / 1024).ceil()} KB';
 
@@ -147,6 +150,7 @@ class ChatAttachment {
         contentType: json['contentType']?.toString() ?? '',
         size: (json['size'] as num?)?.toInt() ?? 0,
         deleted: json['deleted'] == true,
+        durationSeconds: (json['durationSeconds'] as num?)?.toInt(),
       );
 }
 

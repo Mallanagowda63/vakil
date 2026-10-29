@@ -157,7 +157,7 @@ class _TransactionRow extends StatelessWidget {
   String get _title => switch (t.reason) {
         'recharge' => 'Wallet recharge',
         'chat' => 'Chat',
-        'call' => 'Voice call',
+        'call' => 'Voice consultation',
         'refund' => 'Refund',
         _ => t.isDebit ? 'Payment' : 'Credit',
       };

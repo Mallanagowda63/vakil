@@ -116,7 +116,7 @@ class FeedbackCard extends StatelessWidget {
             const SizedBox(width: 6),
             Icon(isCall ? Icons.call_outlined : Icons.chat_bubble_outline, size: 13, color: AppColors.textSecondary),
             const SizedBox(width: 3),
-            Flexible(child: Text([isCall ? 'Voice call' : 'Chat', if (item['category'] != null) item['category'].toString()].join(' · '), style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
+            Flexible(child: Text([isCall ? 'Voice' : 'Chat', if (item['category'] != null) item['category'].toString()].join(' · '), style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
           ]),
           if (comment.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(comment, style: const TextStyle(fontSize: 13))),
         ])),

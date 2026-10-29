@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../models/chat_models.dart';
 import '../services/app_keys.dart';
-import '../services/call_service.dart';
 import '../services/consultation_service.dart';
 import '../services/partner_auth_service.dart';
 import '../services/realtime_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/chat_format.dart';
 import '../widgets/chat_attachments.dart';
+import '../widgets/voice_message.dart';
 import 'session_thanks_screen.dart';
 import '../widgets/app_loader.dart';
 
@@ -266,17 +266,12 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
     });
   }
 
-  Future<void> _startCall() async {
-    final error = await CallService.instance.startCall(requestId: _id, otherName: _chat?.other.name ?? widget.title, otherPhotoUrl: _chat?.other.photoUrl);
-    if (error != null && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-  }
-
   Future<void> _confirmEnd() async {
     final token = _token;
     if (token == null) return;
     final end = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
       title: Text(_isCall ? 'End consultation?' : 'End chat?'),
-      content: Text(_isCall ? 'You will not be able to call ${_chat?.other.name ?? widget.title} again in this consultation.' : '${_chat?.other.name ?? widget.title} will not be able to send more messages.'),
+      content: Text('${_chat?.other.name ?? widget.title} will not be able to send more messages.'),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(context, true), child: Text(_isCall ? 'End' : 'End Chat'))],
     ));
     if (end != true) return;
@@ -314,7 +309,6 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
           ])),
         ]),
         actions: [
-          if (_isCall) IconButton(tooltip: 'Voice call', onPressed: _ended || _loading ? null : _startCall, icon: const Icon(Icons.call_outlined)),
           if (!_ended && !_isTrial && !_loading)
             PopupMenuButton<String>(onSelected: (_) => _confirmEnd(), itemBuilder: (_) => [PopupMenuItem(value: 'end', child: Text(_isCall ? 'End consultation' : 'End Chat'))]),
         ],
@@ -336,12 +330,23 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
           ),
         ]
         else if (!_ended && _startedAt != null) _ChatClock(seconds: DateTime.now().difference(_startedAt!).inSeconds),
+        // Voice consultation: no live call; the mic is how you talk.
+        if (_isCall && !_ended && !_loading) Container(
+          width: double.infinity,
+          color: AppColors.infoBg,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+          child: const Row(children: [
+            Icon(Icons.mic_rounded, size: 16, color: AppColors.primary),
+            SizedBox(width: 8),
+            Expanded(child: Text('Voice consultation · hold the mic to reply with a voice message', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600))),
+          ]),
+        ),
         Expanded(child: _loading
             ? const PageLoader()
             : _error != null
                 ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: () { setState(() => _loading = true); _load(); }, child: const Text('Try again'))]))
                 : items.isEmpty
-                    ? Center(child: Text(_ended ? (_isCall ? 'This consultation has ended.' : 'This chat has ended.') : _isCall ? 'Voice call consultation with $name.' : 'Chat started. Say hello to $name.', style: const TextStyle(color: AppColors.textSecondary)))
+                    ? Center(child: Text(_ended ? (_isCall ? 'This consultation has ended.' : 'This chat has ended.') : _isCall ? 'Voice consultation with $name. Hold the mic to reply.' : 'Chat started. Say hello to $name.', style: const TextStyle(color: AppColors.textSecondary)))
                     : ListView.builder(
                         controller: _scroll,
                         reverse: true,
@@ -360,23 +365,10 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
                           ]);
                         },
                       )),
-        SafeArea(top: false, child: _ended ? _endedBar() : _loading ? const SizedBox.shrink() : _isCall ? _callBar(name) : _inputBar(name)),
+        SafeArea(top: false, child: _ended ? _endedBar() : _loading ? const SizedBox.shrink() : _inputBar(name)),
       ]),
     );
   }
-
-  /// Call consultation: calling replaces the message box.
-  Widget _callBar(String name) => Container(
-        width: double.infinity,
-        color: Colors.white,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-        child: FilledButton.icon(
-          onPressed: _startCall,
-          style: FilledButton.styleFrom(backgroundColor: AppColors.success, minimumSize: const Size.fromHeight(48)),
-          icon: const Icon(Icons.call),
-          label: Text('Call $name'),
-        ),
-      );
 
   Widget _inputBar(String name) => Container(
         color: Colors.white,
@@ -392,7 +384,13 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
             decoration: InputDecoration(hintText: 'Message $name', filled: true, fillColor: const Color(0xFFF1F3F6), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none)),
           )),
           const SizedBox(width: 6),
-          IconButton.filled(onPressed: _send, icon: const Icon(Icons.send)),
+          // Empty box: the mic (hold to record). Typed text: send.
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _input,
+            builder: (context, value, child) => value.text.trim().isEmpty
+                ? VoiceRecordButton(requestId: _id, token: _token, onSent: (m) { setState(() => _insert(m)); _scrollToBottom(); })
+                : IconButton.filled(onPressed: _send, icon: const Icon(Icons.send)),
+          ),
         ]),
       );
 
@@ -401,7 +399,7 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
         color: Colors.white,
         padding: const EdgeInsets.all(16),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(_isTrial ? 'The free trial has ended' : _timed ? (_isCall ? 'Call time is over' : 'Chat time is over') : (_isCall ? 'Consultation ended' : 'Chat ended'), textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          Text(_isTrial ? 'The free trial has ended' : _timed ? (_isCall ? 'Voice consultation time is over' : 'Chat time is over') : (_isCall ? 'Consultation ended' : 'Chat ended'), textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
           if (_messages.any((m) => m.hasLiveAttachment)) const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text('Shared files are deleted 5 minutes after the chat ends. Save anything you need now.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFFB45309), fontWeight: FontWeight.w600)),

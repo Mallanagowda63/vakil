@@ -12,7 +12,10 @@ export const attachmentTypes = {
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
   'application/pdf': 'pdf', 'text/plain': 'txt',
   'application/msword': 'doc', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  // Voice messages recorded in the apps (AAC in an .m4a file).
+  'audio/mp4': 'm4a', 'audio/aac': 'aac',
 };
+export const MAX_VOICE_SECONDS = 120;
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 // CHAT_FILES_KEEP_MINUTES changes the 5 minutes (tests use a few seconds).
 const keepAfterEndMs = () => Number(process.env.CHAT_FILES_KEEP_MINUTES || 5) * 60 * 1000;
@@ -21,20 +24,22 @@ const fail = (status, message) => Object.assign(new Error(message), { status });
 const col = () => getDb().collection('chat_attachments');
 
 /** Checks and stores one file, then sends it as a message in the chat. */
-export async function sendAttachment({ requestId, sender, file, contentType, fileName, clientId }) {
-  if (!attachmentTypes[contentType]) throw fail(400, 'You can send photos (JPG, PNG), PDF, Word or text files');
+export async function sendAttachment({ requestId, sender, file, contentType, fileName, clientId, durationSeconds }) {
+  if (!attachmentTypes[contentType]) throw fail(400, 'You can send photos (JPG, PNG), PDF, Word or text files, or voice messages');
   let bytes;
   try { bytes = Buffer.from(String(file || ''), 'base64'); } catch { bytes = Buffer.alloc(0); }
   if (!bytes.length) throw fail(400, 'Choose a file to send');
   if (bytes.length > MAX_ATTACHMENT_BYTES) throw fail(413, 'The file is too large (10 MB at most)');
-  const type = contentType.startsWith('image/') ? 'image' : 'file';
-  const name = String(fileName || `${type === 'image' ? 'photo' : 'file'}.${attachmentTypes[contentType]}`).replace(/[\r\n/\\]/g, ' ').trim().slice(0, 120);
+  const type = contentType.startsWith('image/') ? 'image' : contentType.startsWith('audio/') ? 'audio' : 'file';
+  const seconds = Math.round(Number(durationSeconds) || 0);
+  if (type === 'audio' && (seconds < 1 || seconds > MAX_VOICE_SECONDS + 2)) throw fail(400, 'Voice messages can be up to 2 minutes long');
+  const name = type === 'audio' ? 'Voice message' : String(fileName || `${type === 'image' ? 'photo' : 'file'}.${attachmentTypes[contentType]}`).replace(/[\r\n/\\]/g, ' ').trim().slice(0, 120);
   // The chat must still accept messages before the file is stored.
   await sendChatMessage({ requestId, sender, clientId, attachment: { check: true, fileName: name, type } });
   const request = await chatFor(requestId, sender);
   const _id = new ObjectId();
   await col().insertOne({ _id, requestId: request._id, senderId: sender.id, data: bytes, contentType, fileName: name, size: bytes.length, createdAt: new Date() });
-  const meta = { id: _id.toString(), fileName: name, contentType, size: bytes.length };
+  const meta = { id: _id.toString(), fileName: name, contentType, size: bytes.length, ...(type === 'audio' ? { durationSeconds: Math.min(seconds, MAX_VOICE_SECONDS) } : {}) };
   return sendChatMessage({ requestId, sender, clientId, attachment: { type, fileName: name, meta } });
 }
 
@@ -58,7 +63,7 @@ export async function deleteExpiredAttachments() {
   const expired = chats.filter((c) => c.status !== 'ONGOING' && new Date(c.sessionEndedAt || c.completedAt || c.updatedAt).getTime() <= cutoff).map((c) => c._id);
   for (const requestId of expired) {
     await col().deleteMany({ requestId });
-    await db.collection('messages').updateMany({ requestId, type: { $in: ['image', 'file'] } }, { $set: { 'attachment.deleted': true } });
+    await db.collection('messages').updateMany({ requestId, type: { $in: ['image', 'file', 'audio'] } }, { $set: { 'attachment.deleted': true } });
     const event = { requestId: requestId.toString() };
     emitToChat(requestId, 'attachments_deleted', event);
     emitAdmin('attachments_deleted', event);

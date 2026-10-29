@@ -97,7 +97,7 @@ class _ChatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final last = chat.lastMessage;
     final mine = last?.senderRole == 'lawyer';
-    final preview = last == null ? (chat.isOngoing ? 'Chat started' : 'Chat ended') : last.isCall ? '📞 ${last.text}' : last.type == 'image' ? '📷 Photo' : last.type == 'file' ? '📎 ${last.text}' : last.text;
+    final preview = last == null ? (chat.isOngoing ? 'Chat started' : 'Chat ended') : last.isCall ? '📞 ${last.text}' : last.type == 'image' ? '📷 Photo' : last.type == 'audio' ? '🎤 Voice message' : last.type == 'file' ? '📎 ${last.text}' : last.text;
     final time = chat.lastActivityAt;
     return ListTile(
       onTap: onTap,

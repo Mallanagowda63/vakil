@@ -9,6 +9,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import '../config/api_config.dart';
 import '../models/chat_models.dart';
+import 'voice_message.dart';
 import 'app_loader.dart';
 
 // Photos and files in a chat, shared by the User App and the Partner App
@@ -81,20 +82,28 @@ Future<ChatMessage?> pickAndSendAttachment(BuildContext context, {required Strin
     const SizedBox(width: 12),
     Expanded(child: Text(contentType.startsWith('image/') ? 'Sending photo…' : 'Sending $name…', overflow: TextOverflow.ellipsis)),
   ])));
+  final (message, error) = await uploadChatFile(requestId: requestId, token: token, bytes: bytes, contentType: contentType, fileName: name);
+  sending.close();
+  if (error != null) say(error);
+  return message;
+}
+
+/// Sends one file (photo, document or voice message) into a chat. Returns the
+/// stored message, or the reason it failed.
+Future<(ChatMessage?, String?)> uploadChatFile({required String requestId, required String token, required List<int> bytes, required String contentType, required String fileName, int? durationSeconds}) async {
   try {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/consultations/$requestId/attachments'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
-      body: jsonEncode({'file': base64Encode(bytes), 'contentType': contentType, 'fileName': name, 'clientId': 'f${DateTime.now().microsecondsSinceEpoch}'}),
+      // Not '?durationSeconds': the Partner App's Dart version has no null-aware elements.
+      // ignore: use_null_aware_elements
+      body: jsonEncode({'file': base64Encode(bytes), 'contentType': contentType, 'fileName': fileName, 'clientId': 'f${DateTime.now().microsecondsSinceEpoch}', if (durationSeconds != null) 'durationSeconds': durationSeconds}),
     ).timeout(const Duration(seconds: 90));
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    sending.close();
-    if (response.statusCode >= 400) { say(data['error']?.toString() ?? 'Could not send the file.'); return null; }
-    return ChatMessage.fromJson(Map<String, dynamic>.from(data['message'] as Map));
+    if (response.statusCode >= 400) return (null, data['error']?.toString() ?? 'Could not send it. Please try again.');
+    return (ChatMessage.fromJson(Map<String, dynamic>.from(data['message'] as Map)), null);
   } catch (_) {
-    sending.close();
-    say('Could not send the file. Check your internet and try again.');
-    return null;
+    return (null, 'Could not send it. Check your internet and try again.');
   }
 }
 
@@ -134,6 +143,7 @@ class AttachmentView extends StatelessWidget {
   Widget build(BuildContext context) {
     final attachment = message.attachment!;
     if (attachment.deleted) return _DeletedFile(attachment: attachment, mine: mine);
+    if (message.type == 'audio') return VoiceBubble(message: message, token: token, mine: mine);
     final url = _attachmentUrl(message.requestId, attachment.id);
     final headers = {if (token != null) 'Authorization': 'Bearer $token'};
     if (message.isImage) {
@@ -221,7 +231,7 @@ class _DeletedFile extends StatelessWidget {
         Icon(Icons.auto_delete_outlined, color: fg, size: 22),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(attachment.contentType.startsWith('image/') ? 'Photo deleted' : 'File deleted', style: TextStyle(color: fg, fontSize: 13.5, fontWeight: FontWeight.w600, fontStyle: FontStyle.italic)),
+          Text(attachment.contentType.startsWith('image/') ? 'Photo deleted' : attachment.contentType.startsWith('audio/') ? 'Voice message deleted' : 'File deleted', style: TextStyle(color: fg, fontSize: 13.5, fontWeight: FontWeight.w600, fontStyle: FontStyle.italic)),
           Text('Removed 5 min after the chat ended', style: TextStyle(color: fg, fontSize: 11)),
         ])),
       ]),

@@ -37,7 +37,7 @@ const refundRuleDefaults = [
 ];
 
 export const settingDefaults = {
-  pricing: { minPerMinute: 10, maxPerMinute: 50, chatPerMinute: 20, callPerMinute: 40, nightPerMinute: 35, nightFrom: '21:00', nightTo: '06:00', promoDiscountPercent: 10, lawyerOverrides: true },
+  pricing: { minPerMinute: 10, maxPerMinute: 50, chatPerMinute: 20, callPerMinute: 25, nightPerMinute: 35, nightFrom: '21:00', nightTo: '06:00', promoDiscountPercent: 10, lawyerOverrides: true },
   commission: { defaultPercent: 20, overrideMinPercent: 15, overrideMaxPercent: 30, promoPercent: 15, promoUntil: '', taxNote: 'GST on platform fee as applicable', effectiveFrom: '' },
   billing: { intervalSeconds: 10, minimumCharge: 0, graceSeconds: 30, connectionTimeoutSeconds: 60, lowBalanceWarnings: 2, reconnectSeconds: 30, gstPercent: 18, customerCancelBeforeConnect: 'No charge', lawyerCancelAfterAccept: 'No charge to customer', lowBalanceEnd: 'Charge through the last billed interval' },
   payouts: { minimumWithdrawal: 2500, schedule: 'Every Friday', holdDays: 3 },

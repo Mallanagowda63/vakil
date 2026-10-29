@@ -38,7 +38,7 @@ export default function Pricing() {
     { id: 'minPerMinute', name: 'Minimum per-minute rate', control: 'Floor rate for all lawyers', basis: 'Applies to all modes' },
     { id: 'maxPerMinute', name: 'Maximum per-minute rate', control: 'Cap for premium and specialist rates', basis: 'Applies to all modes' },
     { id: 'chatPerMinute', name: 'Chat rate per minute', control: 'Customer rate for text consultation', basis: `Customer pays ${money(f.chatPerMinute)}/min` },
-    { id: 'callPerMinute', name: 'Voice-call rate per minute', control: 'Customer rate for voice consultation', basis: `Customer pays ${money(f.callPerMinute)}/min` },
+    { id: 'callPerMinute', name: 'Voice consultation rate per minute', control: 'Customer rate for voice-message consultations', basis: `Customer pays ${money(f.callPerMinute)}/min` },
     { id: 'nightPerMinute', name: 'Night-time rate', control: `Surge between ${f.nightFrom} and ${f.nightTo}`, basis: `Customer pays ${money(f.nightPerMinute)}/min` },
     { id: 'promoDiscountPercent', name: 'Promotional discount', control: 'Campaign discount on customer rate', basis: 'Customer side only', unit: '%' },
   ] : null;
@@ -68,7 +68,7 @@ export default function Pricing() {
     </Card>
     <div className="ld-grid-2">
       <Card title="Commission Deduction Examples" desc={`Commission (${fee}%) is deducted from the lawyer's gross earnings before payout.`}>
-        {f && <div className="ld-two">{[['Chat', f.chatPerMinute], ['Voice call', f.callPerMinute]].map(([name, rate]) => { const e = example(rate); return <div className="ld-box" key={name}><h4>{name}</h4><div className="ld-kv"><span>Customer rate</span><b>{money(e.rate)}/min</b></div><div className="ld-kv"><span>Commission {fee}%</span><b className="ld-red">−{money(e.fee)}/min</b></div><div className="ld-kv"><span>Lawyer receives</span><b className="ld-green">{money(e.lawyer)}/min</b></div></div>; })}</div>}
+        {f && <div className="ld-two">{[['Chat', f.chatPerMinute], ['Voice', f.callPerMinute]].map(([name, rate]) => { const e = example(rate); return <div className="ld-box" key={name}><h4>{name}</h4><div className="ld-kv"><span>Customer rate</span><b>{money(e.rate)}/min</b></div><div className="ld-kv"><span>Commission {fee}%</span><b className="ld-red">−{money(e.fee)}/min</b></div><div className="ld-kv"><span>Lawyer receives</span><b className="ld-green">{money(e.lawyer)}/min</b></div></div>; })}</div>}
       </Card>
       <Card title="Lawyer-specific overrides" desc="Set on each lawyer in Lawyer Management.">
         <Table rows={overrides} empty="No lawyer has a custom rate." columns={[{ label: 'Lawyer', key: 'name' }, { label: 'Rate', render: (l) => `${money(l.rate)}/min` }, { label: 'Commission', render: (l) => l.commissionOverride === null ? `${fee}% (default)` : `${l.commissionOverride}%` }]} />

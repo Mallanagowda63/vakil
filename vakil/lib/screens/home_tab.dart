@@ -84,11 +84,11 @@ class HomeTab extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _ConnectCard(
-                      icon: Icons.auto_awesome,
-                      color: AppColors.aiCardStart,
-                      title: 'Ask AI',
-                      subtitle: 'Instant guidance from Legal Saathi',
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LegalSaathiScreen())),
+                      icon: Icons.mic_rounded,
+                      color: const Color(0xFF16A34A),
+                      title: 'Voice',
+                      subtitle: 'Talk with voice messages',
+                      onTap: () => HomeNav.openLawyers(),
                     ),
                   ),
                 ]),
@@ -710,7 +710,7 @@ class _FeaturedLawyerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Voice calls are hidden for now, so the card only offers Chat.
+    // The card offers Chat; Voice is on the lawyer's profile and the Lawyers tab.
     final onPressed = lawyer.online && lawyer.chatOnline ? () => requestLawyer(context, lawyer) : null;
     return GestureDetector(
       onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LawyerProfileScreen(lawyer: lawyer))),

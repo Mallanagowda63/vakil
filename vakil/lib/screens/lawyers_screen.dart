@@ -193,11 +193,14 @@ class LawyerRow extends StatelessWidget {
             LawyerChannels(lawyer: lawyer),
             const SizedBox(height: 6),
             PriceTag(ratePerMinute: lawyer.ratePerMinute),
+            if (lawyer.callRatePerMinute > 0) Padding(padding: const EdgeInsets.only(top: 3), child: Text('Voice ${formatRate(lawyer.callRatePerMinute)}', style: AppText.caption(AppColors.textGray))),
             if (lawyer.ratingAverage != null) Padding(padding: const EdgeInsets.only(top: 3), child: RatingLine(average: lawyer.ratingAverage!, count: lawyer.ratingCount)),
           ]),
         ),
         Column(mainAxisSize: MainAxisSize.min, children: [
           ChatCallButton(lawyer: lawyer),
+          const SizedBox(height: 6),
+          ChatCallButton(lawyer: lawyer, call: true),
         ]),
       ]),
     ),
@@ -239,11 +242,13 @@ class LawyerChannels extends StatelessWidget {
       Text(lawyer.online ? 'Online' : 'Offline', style: AppText.bodySmall(lawyer.online ? AppColors.greenAccent : AppColors.textGraySoft)),
       const SizedBox(width: 8),
       channel(Icons.chat_bubble_outline, lawyer.chatOnline, lawyer.chatOnline ? 'Taking chats' : 'Not taking chats'),
+      const SizedBox(width: 6),
+      channel(Icons.mic_none_rounded, lawyer.callOnline, lawyer.callOnline ? 'Taking voice consultations' : 'Not taking voice consultations'),
     ]);
   }
 }
 
-/// "Chat" or "Call" button; disabled while the lawyer has that switched off.
+/// "Chat" or "Voice" button; disabled while the lawyer has that switched off.
 class ChatCallButton extends StatelessWidget {
   const ChatCallButton({super.key, required this.lawyer, this.call = false, this.expand = false});
   final LawyerSummary lawyer;
@@ -254,8 +259,9 @@ class ChatCallButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = call ? lawyer.callOnline : lawyer.chatOnline;
     final onPressed = enabled ? () => requestLawyer(context, lawyer, call: call) : null;
-    final icon = Icon(call ? Icons.call_outlined : Icons.chat_bubble_outline, size: 16);
-    final label = Text(call ? 'Call' : 'Chat');
+    // 'call' consultations are voice-message chats now (no live calls).
+    final icon = Icon(call ? Icons.mic_none_rounded : Icons.chat_bubble_outline, size: 16);
+    final label = Text(call ? 'Voice' : 'Chat');
     final size = expand ? const Size.fromHeight(46) : const Size(96, 36);
     return call
         ? OutlinedButton.icon(onPressed: onPressed, icon: icon, label: label, style: OutlinedButton.styleFrom(minimumSize: size, padding: const EdgeInsets.symmetric(horizontal: 12)))

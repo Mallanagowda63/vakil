@@ -133,7 +133,7 @@ consultationRouter.post('/:id/messages', ...roles('user', 'lawyer'), async (req,
 // Photos and files: POST { file: <base64>, contentType, fileName, clientId }
 // sends one into the chat; GET returns its bytes to the people in the chat.
 consultationRouter.post('/:id/attachments', express.json({ limit: '15mb' }), ...roles('user', 'lawyer'), async (req, res) => {
-  try { res.status(201).json({ message: await sendAttachment({ requestId: req.params.id, sender: actorOf(req), file: req.body.file, contentType: req.body.contentType, fileName: req.body.fileName, clientId: req.body.clientId }) }); }
+  try { res.status(201).json({ message: await sendAttachment({ requestId: req.params.id, sender: actorOf(req), file: req.body.file, contentType: req.body.contentType, fileName: req.body.fileName, clientId: req.body.clientId, durationSeconds: req.body.durationSeconds }) }); }
   catch (e) { if (!e.status) throw e; sendError(res, e); }
 });
 

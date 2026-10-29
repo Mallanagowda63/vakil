@@ -155,10 +155,16 @@ class _DashboardHomeTab extends StatelessWidget {
                   controller.chatAllowed ? controller.setAvailableForChat : null,
                   hint: controller.chatAllowed ? 'Clients can send you chat requests' : 'Turned off by Vakil admin',
                 ),
+                _availabilityRow(
+                  'Voice consultations',
+                  controller.availableForCall && controller.callAllowed,
+                  controller.callAllowed ? controller.setAvailableForCall : null,
+                  hint: controller.callAllowed ? 'Clients talk to you with voice messages' : 'Turned off by Vakil admin',
+                ),
                 if (!controller.onlineStatus)
                   const Padding(
                     padding: EdgeInsets.only(top: 6),
-                    child: Text("You're offline. Turn on Chat to receive requests.", style: TextStyle(fontSize: 12.5, color: AppColors.danger)),
+                    child: Text("You're offline. Turn on Chat or Voice to receive requests.", style: TextStyle(fontSize: 12.5, color: AppColors.danger)),
                   ),
                 const Divider(height: 24),
                 const Text('Practice Areas', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
@@ -287,7 +293,7 @@ class _DashboardHomeTab extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(online ? 'You are Online' : 'You are Offline', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: online ? AppColors.success : AppColors.textPrimary)),
-              Text(online ? 'Clients can chat with you' : 'Turn on to receive chats', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Text(online ? 'Clients can chat with you and send voice messages' : 'Turn on to receive chats and voice consultations', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             ])),
             Switch(value: online, onChanged: controller.setOnlineStatus, activeThumbColor: AppColors.success),
           ]),

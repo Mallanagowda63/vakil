@@ -27,8 +27,7 @@ export async function sendChatMessage({ requestId, sender, text, clientId, attac
   if (request.status === 'COMPLETED') throw fail(403, 'This chat has ended');
   if (request.status !== 'ONGOING') throw fail(404, 'Active consultation not found');
   if (request.endsAt && new Date() >= new Date(request.endsAt)) throw fail(403, 'Chat time is over');
-  // A call consultation stays a call; messages are only for chat consultations.
-  if (request.consultationType === 'call') throw fail(403, 'This is a voice call consultation. Messages are not available here.');
+  // 'call' consultations are now voice-message chats (no live calls), so they take messages too.
   const body = attachment ? attachment.fileName : String(text || '').trim();
   if (!body || body.length > 4000) throw fail(400, 'Message must contain 1 to 4000 characters');
   const db = getDb(); const messages = db.collection('messages');
@@ -47,7 +46,7 @@ export async function sendChatMessage({ requestId, sender, text, clientId, attac
   emitAdmin('new_message', payload);
   if (!isConnected(recipient.role, recipient.id)) {
     const name = sender.role === 'lawyer' ? request.lawyerName : request.userName;
-    await notify({ recipientId: recipient.id, recipientRole: recipient.role, title: name || 'New message', body: attachment ? (attachment.type === 'image' ? '📷 Photo' : `📎 ${body}`).slice(0, 120) : body.slice(0, 120), data: { type: 'new_message', requestId: request._id.toString() }, channel: recipient.role === 'lawyer' ? 'chat_messages' : null });
+    await notify({ recipientId: recipient.id, recipientRole: recipient.role, title: name || 'New message', body: attachment ? (attachment.type === 'image' ? '📷 Photo' : attachment.type === 'audio' ? '🎤 Voice message' : `📎 ${body}`).slice(0, 120) : body.slice(0, 120), data: { type: 'new_message', requestId: request._id.toString() }, channel: recipient.role === 'lawyer' ? 'chat_messages' : null });
   }
   return payload;
 }

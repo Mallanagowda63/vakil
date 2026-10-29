@@ -28,7 +28,7 @@ class RequestConsultationScreen extends StatefulWidget {
   final String? photoUrl;
   /// The lawyer's price after the free trial (shown before sending).
   final double? ratePerMinute;
-  /// 'call': when the lawyer accepts, the chat opens and the voice call starts.
+  /// 'call': a voice consultation; when the lawyer accepts, the chat opens for voice messages.
   final String consultationType;
   @override
   State<RequestConsultationScreen> createState() => _State();
@@ -51,7 +51,7 @@ class _State extends State<RequestConsultationScreen> {
   int _minutes = packageMinutes.first;
 
   bool get _freeTrial => !AuthService.instance.trialUsed;
-  String get _actionLabel => widget.consultationType == 'call' ? 'Call Lawyer' : 'Chat with Lawyer';
+  String get _actionLabel => widget.consultationType == 'call' ? 'Start Voice Consultation' : 'Chat with Lawyer';
   bool get _paidChat => !_freeTrial && (widget.ratePerMinute ?? 0) > 0;
   String? get _requestId => _request?['id']?.toString();
   int get _secondsLeft {
@@ -176,7 +176,7 @@ class _State extends State<RequestConsultationScreen> {
       onPopInvokedWithResult: (didPop, _) async { if (!didPop && await _confirmLeave()) _cancel(); },
       child: Scaffold(
         backgroundColor: AppColors.lightBg,
-        appBar: AppBar(title: Text(widget.consultationType == 'call' ? 'Call Lawyer' : 'Chat with Lawyer'), backgroundColor: Colors.white, surfaceTintColor: Colors.white),
+        appBar: AppBar(title: Text(widget.consultationType == 'call' ? 'Voice Consultation' : 'Chat with Lawyer'), backgroundColor: Colors.white, surfaceTintColor: Colors.white),
         body: SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: switch (_phase) {
           _Phase.form => _form(),
           _Phase.waiting => _waiting(),
@@ -206,7 +206,7 @@ class _State extends State<RequestConsultationScreen> {
           const SizedBox(height: 10),
           MinutePicker(rate: widget.ratePerMinute!, selected: _minutes, onSelected: (m) => setState(() => _minutes = m)),
           const SizedBox(height: 8),
-          Text('Paid when the lawyer accepts. Chat and calls end when the time is up; you can add more time during the chat.', style: AppText.caption(AppColors.textGray)),
+          Text(widget.consultationType == 'call' ? 'Paid when the lawyer accepts. You and the lawyer talk with voice messages (up to 2 minutes each) until the time is up; you can add more time.' : 'Paid when the lawyer accepts. The chat ends when the time is up; you can add more time during the chat.', style: AppText.caption(AppColors.textGray)),
         ]),
       );
 

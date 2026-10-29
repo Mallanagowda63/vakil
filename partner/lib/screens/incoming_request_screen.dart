@@ -212,7 +212,7 @@ class _IncomingRequestScreenState extends State<IncomingRequestScreen> {
               ] else if (r.pricePerMinute > 0) ...[
                 const SizedBox(height: 14),
                 Text(
-                  '${r.type == ConsultationType.voice ? 'Voice call' : 'Chat'} · ₹${r.pricePerMinute}/min${r.maxMinutes > 0 ? ' · ${r.maxMinutes} min prepaid' : ''}',
+                  '${r.type == ConsultationType.voice ? 'Voice consultation' : 'Chat'} · ₹${r.pricePerMinute}/min${r.maxMinutes > 0 ? ' · ${r.maxMinutes} min prepaid' : ''}',
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.primaryDark),
                 ),
               ],
@@ -262,7 +262,7 @@ class _IncomingRequestScreenState extends State<IncomingRequestScreen> {
 
 }
 
-/// The client asked for a voice call: after Accept the chat opens and the client calls.
+/// The client asked for a voice consultation: after Accept the chat opens for voice messages.
 class CallRequestBadge extends StatelessWidget {
   const CallRequestBadge({super.key});
 
@@ -272,9 +272,9 @@ class CallRequestBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(10)),
       child: const Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.call, size: 16, color: AppColors.primary),
+        Icon(Icons.mic_rounded, size: 16, color: AppColors.primary),
         SizedBox(width: 8),
-        Text('VOICE CALL REQUEST', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: AppColors.primary, letterSpacing: 0.3)),
+        Text('VOICE CONSULTATION', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: AppColors.primary, letterSpacing: 0.3)),
       ]),
     );
   }

@@ -198,7 +198,7 @@ class _RequestCard extends StatelessWidget {
             if (request.isTrial)
               const Align(alignment: Alignment.centerLeft, child: TrialBadge())
             else if (request.pricePerMinute > 0)
-              Text('${request.type == ConsultationType.voice ? 'Voice call' : 'Chat'} · ₹${request.pricePerMinute}/min${request.maxMinutes > 0 ? ' · ${request.maxMinutes} min' : ''}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primaryDark)),
+              Text('${request.type == ConsultationType.voice ? 'Voice' : 'Chat'} · ₹${request.pricePerMinute}/min${request.maxMinutes > 0 ? ' · ${request.maxMinutes} min' : ''}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primaryDark)),
             const SizedBox(height: 10),
             const Row(
               children: [
