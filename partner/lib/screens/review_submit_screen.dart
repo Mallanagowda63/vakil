@@ -84,6 +84,7 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
                         SummaryRow('City', data.city),
                         SummaryRow('Primary Court', data.primaryCourt),
                         SummaryRow('Languages Spoken', data.languagesSpoken),
+                        SummaryRow('Your Price', '₹${data.pricePer10Minutes} for 10 minutes'),
                         SummaryRow(
                           'Advocate License',
                           data.advocateLicenseFile != null ? 'Uploaded successfully' : '',

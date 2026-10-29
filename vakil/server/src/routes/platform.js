@@ -138,6 +138,16 @@ platformRouter.post('/lawyers/me/registration', ...roles('lawyer'), async (req, 
   const text = (v, max = 120) => String(v ?? '').trim().slice(0, max);
   const { personal = {}, advocate = {}, bank = {} } = req.body;
   if (!text(personal.fullName) || !text(advocate.barCouncilRegNo)) return res.status(400).json({ error: 'Full name and Bar Council registration number are required' });
+  // The lawyer's own price, chosen per 10 minutes in onboarding (₹100–₹500 by
+  // default: the admin's per-minute minimum and maximum x 10). Stored per minute.
+  let ratePerMinute;
+  if (req.body.pricing?.pricePer10Minutes !== undefined) {
+    const pricing = (await getDb().collection('settings').findOne({ key: 'pricing' }))?.value || {};
+    const min = (pricing.minPerMinute ?? 10) * 10; const max = (pricing.maxPerMinute ?? 50) * 10;
+    const price = Number(req.body.pricing.pricePer10Minutes);
+    if (!Number.isFinite(price) || price < min || price > max) return res.status(400).json({ error: `Choose a price between ₹${min} and ₹${max} for 10 minutes` });
+    ratePerMinute = round2(price / 10);
+  }
   // Filled in before sign-in on this phone: it must belong to the email that signed in.
   const email = text(personal.email).toLowerCase();
   if (email && req.user.email && email !== req.user.email) return res.status(409).json({ error: 'This registration was filled in for a different email address' });
@@ -151,7 +161,7 @@ platformRouter.post('/lawyers/me/registration', ...roles('lawyer'), async (req, 
     submittedAt: new Date(),
   };
   // `profile` is null until the first save, so it is written whole.
-  const lawyer = req.user; const set = { registration, ...(phone ? { phone } : {}), profile: { ...(lawyer.profile || {}), fullName: registration.personal.fullName, email: registration.personal.email, ...(registration.personal.gender ? { gender: registration.personal.gender } : {}), updatedAt: new Date() } };
+  const lawyer = req.user; const set = { registration, ...(phone ? { phone } : {}), ...(ratePerMinute !== undefined ? { ratePerMinute } : {}), profile: { ...(lawyer.profile || {}), fullName: registration.personal.fullName, email: registration.personal.email, ...(registration.personal.gender ? { gender: registration.personal.gender } : {}), updatedAt: new Date() } };
   // A new or corrected registration goes (back) to the Admin Panel's verification queue.
   if (!lawyer.approved && !lawyer.blocked) Object.assign(set, { verificationStatus: 'under_review', rejectionReason: null });
   if (registration.advocate.practiceArea && !(lawyer.categories || []).includes(registration.advocate.practiceArea)) set.categories = [registration.advocate.practiceArea, ...(lawyer.categories || [])];
@@ -165,7 +175,7 @@ platformRouter.post('/lawyers/me/registration', ...roles('lawyer'), async (req, 
 platformRouter.patch('/lawyers/me/rate', ...roles('lawyer'), async (req, res) => {
   const rate = round2(req.body.ratePerMinute);
   const pricing = (await getDb().collection('settings').findOne({ key: 'pricing' }))?.value || {};
-  const min = pricing.minPerMinute ?? 10; const max = pricing.maxPerMinute ?? 45;
+  const min = pricing.minPerMinute ?? 10; const max = pricing.maxPerMinute ?? 50;
   if (!Number.isFinite(rate) || rate < min || rate > max) return res.status(400).json({ error: `Choose a rate between ₹${min} and ₹${max} per minute` });
   await getDb().collection('lawyers').updateOne({ _id: req.user._id }, { $set: { ratePerMinute: rate } });
   res.json({ ratePerMinute: rate });

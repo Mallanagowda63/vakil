@@ -18,6 +18,7 @@ class RegistrationSync {
         'personal': {'fullName': d.fullName, 'email': d.email, 'dateOfBirth': d.dateOfBirth?.toIso8601String().substring(0, 10) ?? '', 'gender': d.gender, 'faceVerified': d.faceVerified, 'mobile': d.mobileNumber},
         'advocate': {'barCouncilRegNo': d.barCouncilRegNo, 'practiceArea': d.primaryPracticeArea, 'city': d.city, 'court': d.primaryCourt, 'languages': d.languagesSpoken, 'licenseFileName': d.advocateLicenseFile?.name ?? ''},
         'bank': {'holderName': d.bankAccountHolderName, 'ifsc': d.ifscCode, 'accountNumber': d.bankAccountNumber, 'upi': d.upiId},
+        'pricing': {'pricePer10Minutes': d.pricePer10Minutes},
       };
 
   static String _contentType(String name) {

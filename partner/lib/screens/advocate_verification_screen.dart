@@ -29,6 +29,7 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
   String? _practiceArea;
   PlatformFile? _licenseFile;
   bool _sendingCode = false;
+  late int _price = context.read<RegistrationData>().pricePer10Minutes;
 
   RegistrationData get _data => context.read<RegistrationData>();
   bool get _barVerified => _data.isBarNumberVerified(_barCouncilCtrl.text);
@@ -61,6 +62,40 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
       setState(() {});
       messenger.showSnackBar(const SnackBar(content: Text('Bar Council number verified')));
     }
+  }
+
+  /// Clients see this price and buy chat time at it. ₹100–₹500 for 10 minutes, in ₹10 steps.
+  Widget _priceCard() {
+    const min = RegistrationData.minPricePer10Minutes, max = RegistrationData.maxPricePer10Minutes;
+    final perMinute = _price / 10;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFCBDBFC))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text('₹$_price', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
+          const SizedBox(width: 6),
+          const Padding(padding: EdgeInsets.only(bottom: 5), child: Text('for 10 minutes', style: TextStyle(fontSize: 13.5, color: AppColors.primaryDark, fontWeight: FontWeight.w600))),
+          const Spacer(),
+          Padding(padding: const EdgeInsets.only(bottom: 5), child: Text('₹${perMinute % 1 == 0 ? perMinute.toInt() : perMinute.toStringAsFixed(1)}/min', style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary))),
+        ]),
+        Slider(
+          value: _price.toDouble(),
+          min: min.toDouble(),
+          max: max.toDouble(),
+          divisions: (max - min) ~/ 10,
+          label: '₹$_price',
+          onChanged: (v) => setState(() => _price = v.round()),
+        ),
+        const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('₹$min', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+          Text('₹$max', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+        ]),
+        const SizedBox(height: 6),
+        const Text('Clients pay this for each 10 minutes of chat. A client's very first chat on Vakil is a free 1-minute trial. You can ask the Vakil team to change it later.', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary, height: 1.35)),
+        const SizedBox(height: 6),
+      ]),
+    );
   }
 
   Widget _barSuffix() {
@@ -155,6 +190,7 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
       return;
     }
 
+    context.read<RegistrationData>().savePrice(_price);
     context.read<RegistrationData>().saveAdvocateDetails(
           barCouncilRegNo: _barCouncilCtrl.text.trim(),
           primaryPracticeArea: _practiceArea!,
@@ -247,6 +283,10 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
                       const SizedBox(height: 8),
+                      _sectionLabel(Icons.currency_rupee, 'Your Consultation Price'),
+                      const SizedBox(height: 4),
+                      _priceCard(),
+                      const SizedBox(height: 20),
                       _sectionLabel(Icons.verified_user_outlined, 'Identity & License'),
                       const SizedBox(height: 12),
                       UploadDropzone(

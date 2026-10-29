@@ -54,6 +54,15 @@ class RegistrationData extends ChangeNotifier {
   }
 
   String primaryPracticeArea = '';
+  /// The lawyer's own price for 10 minutes of chat (₹100–₹500).
+  static const minPricePer10Minutes = 100, maxPricePer10Minutes = 500;
+  int pricePer10Minutes = 200;
+
+  void savePrice(int price) {
+    pricePer10Minutes = price.clamp(minPricePer10Minutes, maxPricePer10Minutes);
+    notifyListeners();
+  }
+
   String city = '';
   String primaryCourt = '';
   String languagesSpoken = '';
