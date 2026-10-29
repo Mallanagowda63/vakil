@@ -93,6 +93,8 @@ class HomeTab extends StatelessWidget {
                   ),
                 ]),
               ),
+              const SizedBox(height: 12),
+              const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: _SaathiCard()),
               const SizedBox(height: 22),
               _SectionTitle('Top lawyers online', action: 'View all', onAction: () => HomeNav.openLawyers()),
               const SizedBox(height: 12),
@@ -336,6 +338,56 @@ class _Tag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: 0.3))),
       child: Text(text, style: AppText.caption(Colors.white).copyWith(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+    );
+  }
+}
+
+/// Legal Saathi AI: free instant guidance, then the right lawyer.
+class _SaathiCard extends StatelessWidget {
+  const _SaathiCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LegalSaathiScreen())),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.aiCardStart, AppColors.aiCardEnd]),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [BoxShadow(color: AppColors.aiCardEnd.withValues(alpha: 0.25), blurRadius: 12, offset: const Offset(0, 5))],
+          ),
+          child: Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
+              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Text('Legal Saathi AI', style: AppText.h3(Colors.white).copyWith(fontSize: 16)),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
+                    child: Text('FREE', style: AppText.caption(Colors.white).copyWith(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+                  ),
+                ]),
+                const SizedBox(height: 2),
+                Text('Describe your problem. Get guidance and the right lawyer for it.', style: AppText.caption(Colors.white.withValues(alpha: 0.85)).copyWith(height: 1.3)),
+              ]),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: Colors.white),
+          ]),
+        ),
+      ),
     );
   }
 }

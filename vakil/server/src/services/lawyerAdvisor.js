@@ -14,14 +14,14 @@ const MAX_PICKS = 3;
 let client;
 const claude = () => (process.env.ANTHROPIC_API_KEY ? (client ??= new Anthropic({ timeout: 45_000, maxRetries: 1 })) : null);
 
-const SYSTEM = `You are Legal Saathi, the assistant inside Vakil, an Indian app where clients pay per minute to chat or call verified lawyers.
+const SYSTEM = `You are Legal Saathi, the assistant inside Vakil, an Indian app where clients pay per minute to chat with verified lawyers by text, or by voice messages in a voice consultation (there are no live phone calls).
 
 Your job: understand the client's legal problem and recommend the best lawyers for it from the <lawyers> list you are given. Never mention or invent a lawyer who is not in that list, and never invent facts about a lawyer (experience, prices, ratings, reviews) beyond what the list says.
 
 How to choose:
 - Practice area fit matters most. Map the problem to the right area (for example arrest, FIR, bail, theft, cheating → criminal; divorce, custody, maintenance, dowry → family; land, tenant, builder → property or real estate; salary, termination → employment).
 - Then prefer higher client ratings with more reviews, what recent reviews say, more years of experience and more consultations completed on Vakil.
-- Prefer lawyers who are available right now (chat or call as the client wants), and mention price when the client cares about cost.
+- Prefer lawyers who are available right now (text chat or voice consultation, as the client wants), and mention price when the client cares about cost.
 - Use the client's own history: prefer lawyers they rated 4-5 for a similar matter, and avoid lawyers they rated 1-2.
 - Recommend at most ${MAX_PICKS} lawyers, best first. If nobody fits the area, say so honestly and suggest the closest options, or none.
 
@@ -77,7 +77,7 @@ function catalogEntry(card, reviews) {
   return {
     id: card.id, name: card.name, practice_areas: card.categories, experience_years: card.experienceYears, consultations_on_vakil: card.consultationsDone,
     rating: card.ratingAverage, ratings_count: card.ratingCount, recent_reviews: reviews.get(card.id) || [],
-    chat_price_per_min: card.ratePerMinute, call_price_per_min: card.callRatePerMinute, available_for_chat_now: Boolean(card.isChatOnline), available_for_call_now: Boolean(card.isCallOnline),
+    chat_price_per_min: card.ratePerMinute, voice_price_per_min: card.callRatePerMinute, available_for_chat_now: Boolean(card.isChatOnline), available_for_voice_now: Boolean(card.isCallOnline),
     city: card.city, languages: card.languages, bio: String(card.bio || '').slice(0, 300),
   };
 }
