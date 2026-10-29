@@ -22,6 +22,7 @@ import { aiRouter } from './routes/ai.js';
 import { initRealtime, turnOffAwayLawyers } from './realtime.js';
 import { endTimedOutChats, expirePending } from './services/consultations.js';
 import { deleteExpiredAttachments } from './services/attachments.js';
+import { settleStalePayments } from './services/wallet.js';
 import { missUnansweredCalls } from './services/calls.js';
 import { billOngoingChats } from './services/billing.js';
 
@@ -102,5 +103,6 @@ connectDb()
     setInterval(() => billOngoingChats().catch(console.error), 1000).unref();
     setInterval(() => turnOffAwayLawyers().catch(console.error), 60000).unref();
     setInterval(() => deleteExpiredAttachments().catch(console.error), 30000).unref();
+    setInterval(() => settleStalePayments().catch(console.error), 10 * 60000).unref();
   })
   .catch((err) => console.error('Failed to connect to MongoDB:', err.stack || err.message));

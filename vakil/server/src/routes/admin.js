@@ -148,6 +148,12 @@ adminRouter.patch('/lawyers/:id', async (req, res) => {
   const b = req.body; const set = {}; const now = new Date(); const admin = req.user.email || req.user.phone || 'admin';
   const statuses = { approved: { approved: true, blocked: false, verificationStatus: 'approved', approvedAt: now, approvedBy: admin }, rejected: { approved: false, blocked: false, verificationStatus: 'rejected' }, suspended: { blocked: true, verificationStatus: 'suspended' }, pending: { approved: false, blocked: false, verificationStatus: 'pending' } };
   if (b.verificationStatus) { if (!statuses[b.verificationStatus]) return res.status(400).json({ error: 'Unknown status' }); Object.assign(set, statuses[b.verificationStatus]); }
+  if (set.approved) {
+    const lawyer = await getDb().collection('lawyers').findOne({ _id });
+    const reg = lawyer?.registration;
+    if (!lawyer) return res.status(404).json({ error: 'Lawyer not found' });
+    if (!String(reg?.personal?.fullName || lawyer.profile?.fullName || '').trim() || !String(reg?.advocate?.barCouncilRegNo || '').trim()) return res.status(400).json({ error: 'This lawyer has not submitted registration (name and Bar Council number) yet' });
+  }
   if ('approved' in b) Object.assign(set, b.approved ? statuses.approved : { approved: false, verificationStatus: 'pending' });
   if ('blocked' in b) Object.assign(set, b.blocked ? statuses.suspended : { blocked: false });
   for (const flag of ['featured', 'recommended']) if (flag in b) set[flag] = Boolean(b[flag]);

@@ -49,7 +49,10 @@ export async function lawyerCards(lawyers) {
   return Promise.all(lawyers.map(async (l) => ({ ...lawyerStatus(l), name: l.profile?.fullName || l.registration?.personal?.fullName || 'Lawyer', photoUrl: l.profile?.photoUrl || null, categories: l.categories || [], ratePerMinute: await rateOf(l), callRatePerMinute: callRate, bio: l.profile?.bio || '', city: l.profile?.city || l.registration?.advocate?.city || '', languages: l.profile?.languages || l.registration?.advocate?.languages || '', experienceYears: l.profile?.experienceYears ?? null, consultationsDone: done.get(l._id.toString()) || 0, ...(ratings.get(l._id.toString()) || { ratingAverage: null, ratingCount: 0 }) })));
 }
 
-export const listedLawyers = (filter = {}) => getDb().collection('lawyers').find({ approved: true, blocked: { $ne: true }, ...filter }).toArray();
+const hasName = (l) => Boolean(String(l.profile?.fullName || l.registration?.personal?.fullName || '').trim());
+// Approved, not blocked, and with a name: an account approved before it filled
+// in registration is not shown to clients.
+export const listedLawyers = async (filter = {}) => (await getDb().collection('lawyers').find({ approved: true, blocked: { $ne: true }, ...filter }).toArray()).filter(hasName);
 
 platformRouter.get('/lawyers', requireAuth, async (req, res) => {
   let items = await lawyerCards(await listedLawyers(req.query.category ? { categories: req.query.category } : {}));

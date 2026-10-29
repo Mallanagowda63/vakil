@@ -159,6 +159,25 @@ export async function handleCashfreeWebhook(body) {
   return { ok: true };
 }
 
+// Every 10 minutes: recharges still pending after 30 minutes (checkout closed
+// and no webhook) are asked about once more. Paid ones are credited, failed
+// ones marked failed, and ones Cashfree still shows as open after a day expire.
+export async function settleStalePayments() {
+  const payments = getDb().collection('payments'); const now = Date.now();
+  const stale = await payments.find({ status: 'pending', createdAt: { $lt: new Date(now - 30 * 60000) } }).limit(50).toArray();
+  for (const payment of stale) {
+    const old = new Date(payment.createdAt).getTime() < now - 24 * 3600000;
+    if (payment.gateway === 'cashfree' && cashfreeConfig()) {
+      try { await settleCashfree(payment); continue; }
+      catch (e) { if (!e.status) { console.error('Payment re-check failed:', e.message); continue; } }
+      // 409 = still open at Cashfree: give it a day before calling it expired.
+      if (!old) continue;
+    } else if (payment.gateway === 'cashfree' && !old) continue;
+    await payments.updateOne({ _id: payment._id, status: 'pending' }, { $set: { status: 'failed', failureReason: 'Checkout not completed (expired)', updatedAt: new Date() } });
+  }
+  return stale.length;
+}
+
 // The user closed or failed the checkout. A Cashfree order is checked first,
 // in case it was paid after all.
 export async function cancelRecharge({ user, orderId, reason }) {
