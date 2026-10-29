@@ -1,3 +1,4 @@
+import './timezone.js';
 import 'dotenv/config';
 import { initPush } from './push.js';
 import compression from 'compression';

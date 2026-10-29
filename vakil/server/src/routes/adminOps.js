@@ -125,13 +125,20 @@ const bankOf = (l) => { const b = l.registration?.bank; if (!b) return null; con
 
 adminOpsRouter.get('/overview', run(async () => {
   const today = startOfToday(); const weekAgo = new Date(Date.now() - 7 * 86400000);
-  const [users, lawyers, requests, calls, payments, payouts, complaints, refunds, reviews] = await Promise.all([
+  const [users, lawyers, requests, calls, payments, payouts, complaints, refunds, reviews, money] = await Promise.all([
     col('users').find({ role: { $ne: 'admin' } }).project({ createdAt: 1 }).toArray(), col('lawyers').find({}).toArray(), col('consultation_requests').find({}).toArray(), col('calls').find({}).toArray(),
     col('payments').find({}).toArray(), col('payouts').find({}).toArray(), col('complaints').find({}).toArray(), col('refunds').find({}).toArray(), col('reviews').find({}).toArray(),
+    col('wallet_transactions').find({ status: { $ne: 'failed' } }).toArray(),
   ]);
-  const commission = await getSetting('commission');
-  const paidToday = payments.filter((p) => p.status === 'successful' && new Date(p.createdAt) >= today);
-  const revenueToday = sum(paidToday, (p) => p.amount);
+  const isToday = (d) => d && new Date(d) >= today;
+  // What clients actually spent on consultations (wallet charges for chats and
+  // voice), and what lawyers earned and Vakil kept from it (the ledger's own
+  // split, so per-lawyer commission is right). Wallet top-ups are separate.
+  const chargeRows = money.filter((t) => t.accountRole === 'user' && t.type === 'debit');
+  const earningRows = money.filter((t) => t.accountRole === 'lawyer' && t.type === 'earning');
+  const spentToday = sum(chargeRows.filter((t) => isToday(t.createdAt)), (t) => Math.abs(t.amount));
+  const earnedToday = earningRows.filter((t) => isToday(t.createdAt));
+  const rechargedToday = sum(payments.filter((p) => p.status === 'successful' && isToday(p.createdAt)), (p) => p.amount);
   const months = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); d.setMonth(d.getMonth() - 6 + i); return d; });
   const inMonth = (date, m) => { const d = new Date(date); return d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth(); };
   const categories = {}; for (const r of requests) categories[r.category || 'Other'] = (categories[r.category || 'Other'] || 0) + 1;
@@ -140,10 +147,11 @@ adminOpsRouter.get('/overview', run(async () => {
   const weekOld = (list) => list.filter((x) => new Date(x.createdAt) < weekAgo).length;
   return {
     registration: { customers: users.length, customersLastWeek: weekOld(users), lawyers: lawyers.length, lawyersLastWeek: weekOld(lawyers), pendingVerification: lawyers.filter((l) => !l.approved && !l.blocked && l.verificationStatus !== 'rejected').length, lawyersOnline: lawyers.filter((l) => l.connected).length },
-    communication: { activeChats: requests.filter((r) => r.status === 'ONGOING').length, activeCalls: calls.filter((c) => ['ringing', 'answered'].includes(c.status)).length, consultationsToday: requests.filter((r) => new Date(r.createdAt) >= today).length, callsToday: calls.filter((c) => new Date(c.startedAt) >= today).length },
-    finance: { customerPaymentsToday: revenueToday, platformCommissionToday: round2(revenueToday * commission.defaultPercent / 100), lawyerEarningsToday: round2(revenueToday * (100 - commission.defaultPercent) / 100), pendingPayouts: sum(payouts.filter((p) => ['pending', 'processing', 'on_hold'].includes(p.status)), (p) => p.amount), anyPayments: payments.length > 0 },
+    // 'call' consultations are voice-message consultations now.
+    communication: { activeChats: requests.filter((r) => r.status === 'ONGOING' && r.consultationType !== 'call').length, activeCalls: requests.filter((r) => r.status === 'ONGOING' && r.consultationType === 'call').length, consultationsToday: requests.filter((r) => isToday(r.createdAt)).length, completedToday: requests.filter((r) => r.status === 'COMPLETED' && isToday(r.sessionEndedAt || r.completedAt)).length, callsToday: requests.filter((r) => r.consultationType === 'call' && isToday(r.createdAt)).length },
+    finance: { customerPaymentsToday: round2(spentToday), rechargesToday: round2(rechargedToday), platformCommissionToday: round2(sum(earnedToday, (t) => t.commission)), lawyerEarningsToday: round2(sum(earnedToday, (t) => t.amount)), pendingPayouts: sum(payouts.filter((p) => ['pending', 'processing', 'on_hold'].includes(p.status)), (p) => p.amount), anyPayments: chargeRows.length > 0 || payments.length > 0 },
     alerts: { refundRequests: refunds.filter((r) => r.status === 'pending').length, openComplaints: complaints.filter((c) => c.status !== 'resolved').length, failedPayments: payments.filter((p) => p.status === 'failed').length, flaggedReviews: reviews.filter((r) => r.flagged).length },
-    monthly: months.map((m) => ({ label: m.toLocaleString('en-IN', { month: 'short' }), consultations: requests.filter((r) => inMonth(r.createdAt, m)).length, revenue: sum(payments.filter((p) => p.status === 'successful' && inMonth(p.createdAt, m)), (p) => p.amount) })),
+    monthly: months.map((m) => ({ label: m.toLocaleString('en-IN', { month: 'short' }), consultations: requests.filter((r) => inMonth(r.createdAt, m)).length, revenue: round2(sum(chargeRows.filter((t) => inMonth(t.createdAt, m)), (t) => Math.abs(t.amount))) })),
     topCategories, topLawyers,
   };
 }));

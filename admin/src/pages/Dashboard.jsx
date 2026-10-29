@@ -22,14 +22,14 @@ export default function Dashboard() {
       <SectionTitle>Communication Activity</SectionTitle>
       <Stats cols={3}>
         <Stat label="Active Chats" value={number(d.communication.activeChats)} icon={MessageSquare} sub={<Link to="/live">Open live view</Link>} />
-        <Stat label="Active Voice Calls" value={number(d.communication.activeCalls)} icon={PhoneCall} tone="green" sub={`${number(d.communication.callsToday)} calls today`} />
-        <Stat label="Today's Consultations" value={number(d.communication.consultationsToday)} icon={CalendarCheck} tone="amber" sub="requests created today" />
+        <Stat label="Active Voice Consultations" value={number(d.communication.activeCalls)} icon={PhoneCall} tone="green" sub={`${number(d.communication.callsToday)} voice requests today`} />
+        <Stat label="Today's Consultations" value={number(d.communication.consultationsToday)} icon={CalendarCheck} tone="amber" sub={`requests today · ${number(d.communication.completedToday ?? 0)} completed`} />
       </Stats>
 
       <SectionTitle>Financial Performance</SectionTitle>
       <Stats>
-        <Stat label="Today's Customer Payments" value={money(d.finance.customerPaymentsToday)} icon={IndianRupee} tone="green" sub={d.finance.anyPayments ? 'successful payments' : 'no payments recorded yet'} />
-        <Stat label="Today's Platform Commission" value={money(d.finance.platformCommissionToday)} icon={TrendingUp} sub="from today's payments" />
+        <Stat label="Today's Customer Payments" value={money(d.finance.customerPaymentsToday)} icon={IndianRupee} tone="green" sub={d.finance.anyPayments ? `spent on consultations · ${money(d.finance.rechargesToday ?? 0)} wallet top-ups` : 'no payments recorded yet'} />
+        <Stat label="Today's Platform Commission" value={money(d.finance.platformCommissionToday)} icon={TrendingUp} sub="from today's consultations" />
         <Stat label="Lawyer Earnings (Today)" value={money(d.finance.lawyerEarningsToday)} icon={Wallet} tone="violet" sub="after commission" />
         <Stat label="Pending Payouts" value={money(d.finance.pendingPayouts)} icon={Clock} tone="amber" sub={<Link to="/payouts">Payout queue</Link>} />
       </Stats>
