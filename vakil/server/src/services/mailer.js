@@ -29,6 +29,29 @@ function transporter() {
   return transport;
 }
 
+const deliver = async (mail) => { if (resendKey()) return sendViaResend(mail); await transporter().sendMail(mail); };
+const escapeHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+/** Partner onboarding: confirms the Bar Council registration number with a 6-digit code. */
+export async function sendBarVerificationEmail(to, code, barCouncilRegNo) {
+  const app = 'Legally Talk Partner'; const number = escapeHtml(barCouncilRegNo);
+  await deliver({
+    from: process.env.MAIL_FROM || `${app} <${process.env.SMTP_USER}>`,
+    to,
+    subject: `${code} – verify your Bar Council registration number`,
+    text: `You entered Bar Council registration number ${barCouncilRegNo} in ${app}.\n\nYour verification code is ${code}. Enter it in the app to verify the number and continue your onboarding.\n\nThe code expires in 10 minutes. If you did not start registering with ${app}, you can ignore this email.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:460px;margin:auto;padding:24px;color:#111">
+  <h2 style="margin:0 0 12px">Verify your Bar Council number</h2>
+  <p style="margin:0 0 8px">You entered this Bar Council registration number in ${app}:</p>
+  <p style="font-size:18px;font-weight:700;margin:0 0 18px;padding:10px 14px;background:#f1f4fb;border-radius:8px;display:inline-block">${number}</p>
+  <p style="margin:0 0 8px">Enter this code in the app to verify it and continue your onboarding:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:0 0 18px">${code}</p>
+  <p style="color:#666;font-size:13px;margin:0 0 6px">The code expires in 10 minutes.</p>
+  <p style="color:#666;font-size:13px;margin:0">If you did not start registering with ${app}, you can ignore this email. The Vakil team also checks every number against your licence before approving your account.</p>
+</div>`,
+  });
+}
+
 export async function sendOtpEmail(to, code, role) {
   const app = role === 'lawyer' ? 'Legally Talk Partner' : role === 'admin' ? 'Legally Talk Admin' : 'Legally Talk';
   const mail = {
@@ -43,6 +66,5 @@ export async function sendOtpEmail(to, code, role) {
   <p style="color:#666;font-size:13px;margin:0">It expires in 5 minutes. If you did not try to sign in, you can ignore this email.</p>
 </div>`,
   };
-  if (resendKey()) return sendViaResend(mail);
-  await transporter().sendMail(mail);
+  await deliver(mail);
 }

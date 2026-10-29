@@ -1,7 +1,10 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/registration_data.dart';
+import '../services/partner_auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/labeled_text_field.dart';
 import '../widgets/primary_button.dart';
@@ -24,6 +27,59 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
   late final TextEditingController _languagesCtrl;
   String? _practiceArea;
   PlatformFile? _licenseFile;
+  bool _sendingCode = false;
+
+  RegistrationData get _data => context.read<RegistrationData>();
+  bool get _barVerified => _data.isBarNumberVerified(_barCouncilCtrl.text);
+  String get _email => _data.email.trim().isNotEmpty ? _data.email.trim() : (PartnerAuthService.instance.email ?? '');
+
+  /// "Verify": emails a code for this number, then asks for it.
+  Future<void> _verifyBarNumber() async {
+    final number = _barCouncilCtrl.text.trim();
+    final messenger = ScaffoldMessenger.of(context);
+    if (number.length < 3) { messenger.showSnackBar(const SnackBar(content: Text('Enter your Bar Council registration number first'))); return; }
+    if (_email.isEmpty) { messenger.showSnackBar(const SnackBar(content: Text('Add your email in Personal Details first'))); return; }
+    setState(() => _sendingCode = true);
+    String? devCode;
+    try {
+      final res = await PartnerAuthService.instance.sendBarCode(_email, number);
+      devCode = kDebugMode ? res['devCode']?.toString() : null;
+    } on PartnerNetworkException catch (e) {
+      if (mounted) { setState(() => _sendingCode = false); messenger.showSnackBar(SnackBar(content: Text(e.message))); }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _sendingCode = false);
+    final verified = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _BarCodeDialog(email: _email, number: number, devCode: devCode),
+    );
+    if (verified == true && mounted) {
+      _data.markBarNumberVerified(number);
+      setState(() {});
+      messenger.showSnackBar(const SnackBar(content: Text('Bar Council number verified')));
+    }
+  }
+
+  Widget _barSuffix() {
+    if (_barVerified) {
+      return const Padding(
+        padding: EdgeInsets.only(right: 10),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.verified, color: AppColors.success, size: 18),
+          SizedBox(width: 4),
+          Text('Verified', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w700, fontSize: 13)),
+        ]),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: _sendingCode
+          ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+          : TextButton(onPressed: _verifyBarNumber, child: const Text('Verify', style: TextStyle(fontWeight: FontWeight.w700))),
+    );
+  }
 
   static const _practiceAreas = [
     'Civil & Family Law',
@@ -79,6 +135,12 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    if (!_barVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tap Verify next to your Bar Council number and enter the code we email you')),
+      );
+      return;
+    }
     if (_practiceArea == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select your primary practice area')),
@@ -135,6 +197,10 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
                         required: true,
                         controller: _barCouncilCtrl,
                         hint: 'e.g. DL-12345/2023',
+                        textCapitalization: TextCapitalization.characters,
+                        suffixIcon: _barSuffix(),
+                        // Editing the number after verifying it needs a new code.
+                        onChanged: (_) => setState(() {}),
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Registration number is required' : null,
                       ),
                       const Text('Primary Practice Area', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
@@ -226,6 +292,103 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
         Icon(icon, size: 16, color: AppColors.primary),
         const SizedBox(width: 6),
         Text(text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+      ],
+    );
+  }
+}
+
+/// Asks for the 6-digit code emailed for the Bar Council number. Pops true once verified.
+class _BarCodeDialog extends StatefulWidget {
+  const _BarCodeDialog({required this.email, required this.number, this.devCode});
+  final String email;
+  final String number;
+  final String? devCode;
+
+  @override
+  State<_BarCodeDialog> createState() => _BarCodeDialogState();
+}
+
+class _BarCodeDialogState extends State<_BarCodeDialog> {
+  final _code = TextEditingController();
+  String? _error;
+  bool _checking = false;
+  int _resendIn = 30;
+  String? _devCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _devCode = widget.devCode;
+    _tick();
+  }
+
+  void _tick() => Future.delayed(const Duration(seconds: 1), () {
+        if (!mounted || _resendIn == 0) return;
+        setState(() => _resendIn--);
+        _tick();
+      });
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _check() async {
+    if (_code.text.trim().length != 6) { setState(() => _error = 'Enter the 6-digit code'); return; }
+    setState(() { _checking = true; _error = null; });
+    try {
+      await PartnerAuthService.instance.checkBarCode(widget.email, widget.number, _code.text.trim());
+      if (mounted) Navigator.of(context).pop(true);
+    } on PartnerNetworkException catch (e) {
+      if (mounted) setState(() { _checking = false; _error = e.message; });
+    }
+  }
+
+  Future<void> _resend() async {
+    setState(() { _error = null; _resendIn = 30; });
+    _tick();
+    try {
+      final res = await PartnerAuthService.instance.sendBarCode(widget.email, widget.number);
+      if (mounted) setState(() => _devCode = kDebugMode ? res['devCode']?.toString() : null);
+    } on PartnerNetworkException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Check your email'),
+      content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text.rich(TextSpan(style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4), children: [
+          const TextSpan(text: 'We sent a code to '),
+          TextSpan(text: widget.email, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          const TextSpan(text: ' to verify Bar Council number '),
+          TextSpan(text: widget.number, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          const TextSpan(text: '.'),
+        ])),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _code,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: 8),
+          decoration: InputDecoration(counterText: '', hintText: '------', errorText: _error, border: const OutlineInputBorder()),
+          onSubmitted: (_) => _check(),
+        ),
+        if (_devCode != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Test code: $_devCode', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(onPressed: _resendIn > 0 || _checking ? null : _resend, child: Text(_resendIn > 0 ? 'Resend in ${_resendIn}s' : 'Resend code')),
+        ),
+      ]),
+      actions: [
+        TextButton(onPressed: _checking ? null : () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        FilledButton(onPressed: _checking ? null : _check, child: Text(_checking ? 'Checking...' : 'Verify')),
       ],
     );
   }

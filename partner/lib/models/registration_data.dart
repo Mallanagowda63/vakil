@@ -43,6 +43,16 @@ class RegistrationData extends ChangeNotifier {
 
   // ---- Step 3: Advocate verification ----
   String barCouncilRegNo = '';
+  /// The Bar Council number confirmed with the emailed code (normalized), or ''.
+  String barCouncilVerifiedNo = '';
+  static String normalizeBarNumber(String v) => v.toUpperCase().replaceAll(RegExp(r'\s+'), '');
+  bool isBarNumberVerified(String v) => barCouncilVerifiedNo.isNotEmpty && normalizeBarNumber(v) == barCouncilVerifiedNo;
+
+  void markBarNumberVerified(String v) {
+    barCouncilVerifiedNo = normalizeBarNumber(v);
+    notifyListeners();
+  }
+
   String primaryPracticeArea = '';
   String city = '';
   String primaryCourt = '';

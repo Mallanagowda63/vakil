@@ -5,6 +5,7 @@ import { lawyerStatus, statusRank } from '../services/consultations.js';
 import { callRateOf, rateOf, round2 } from '../services/wallet.js';
 import { announceLawyer, emitAdmin } from '../realtime.js';
 import { earningsSummary, payoutDetailsOf, requestPayout } from '../services/earnings.js';
+import { barVerifiedAt, checkBarCode, sendBarCode } from '../services/barVerification.js';
 import { MAX_DOCUMENT_BYTES, documentKinds, documentTypes, saveDocument } from '../services/lawyerDocuments.js';
 
 export const platformRouter = Router();
@@ -74,6 +75,15 @@ platformRouter.post('/lawyers/me/documents', express.json({ limit: '8mb' }), ...
   res.status(201).json({ document });
 });
 
+// Partner onboarding: "Verify" next to the Bar Council number. Open before
+// sign-in (registration can start first); see services/barVerification.js.
+const bar = (fn) => async (req, res) => {
+  try { res.json(await fn(req.body)); }
+  catch (e) { if (!e.status) throw e; res.status(e.status).json({ error: e.message }); }
+};
+platformRouter.post('/lawyers/bar-verification/send', bar(sendBarCode));
+platformRouter.post('/lawyers/bar-verification/check', bar(checkBarCode));
+
 // POST /api/support { topic, message }: a help request from either app. It
 // opens a ticket in the Admin Panel's Complaints so the team can answer.
 platformRouter.post('/support', ...roles('user', 'lawyer'), async (req, res) => {
@@ -133,7 +143,7 @@ platformRouter.post('/lawyers/me/registration', ...roles('lawyer'), async (req, 
   const phone = /^[6-9]\d{9}$/.test(digits) && !req.user.phone && !(await getDb().collection('lawyers').findOne({ phone: `+91${digits}` })) ? `+91${digits}` : null;
   const registration = {
     personal: { fullName: text(personal.fullName), email: req.user.email || email, dateOfBirth: text(personal.dateOfBirth, 20), gender: text(personal.gender, 20), faceVerified: Boolean(personal.faceVerified) },
-    advocate: { barCouncilRegNo: text(advocate.barCouncilRegNo, 60), practiceArea: text(advocate.practiceArea), city: text(advocate.city), court: text(advocate.court), languages: text(advocate.languages), licenseFileName: text(advocate.licenseFileName, 200) || null },
+    advocate: { barCouncilRegNo: text(advocate.barCouncilRegNo, 60), barCouncilVerifiedAt: await barVerifiedAt(req.user.email || email, advocate.barCouncilRegNo), practiceArea: text(advocate.practiceArea), city: text(advocate.city), court: text(advocate.court), languages: text(advocate.languages), licenseFileName: text(advocate.licenseFileName, 200) || null },
     bank: { holderName: text(bank.holderName), ifsc: text(bank.ifsc, 20).toUpperCase(), accountNumber: text(bank.accountNumber, 30).replace(/\s/g, ''), upi: text(bank.upi, 80) },
     submittedAt: new Date(),
   };

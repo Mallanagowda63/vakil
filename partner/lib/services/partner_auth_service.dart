@@ -45,6 +45,12 @@ class PartnerAuthService {
   Future<Map<String, dynamic>> requestOtp(String email, {bool register = false}) =>
       _call('POST', '/api/auth/otp/request', body: {'email': email, 'role': 'lawyer', if (register) 'register': true});
 
+  /// Onboarding: emails a code to confirm the Bar Council number (works before sign-in).
+  Future<Map<String, dynamic>> sendBarCode(String email, String barCouncilRegNo) =>
+      _call('POST', '/api/lawyers/bar-verification/send', body: {'email': email, 'barCouncilRegNo': barCouncilRegNo});
+  Future<void> checkBarCode(String email, String barCouncilRegNo, String code) =>
+      _call('POST', '/api/lawyers/bar-verification/check', body: {'email': email, 'barCouncilRegNo': barCouncilRegNo, 'code': code});
+
   Future<void> verifyOtp(String email, String code) async {
     final res = await _call('POST', '/api/auth/otp/verify', body: {'email': email, 'role': 'lawyer', 'code': code});
     token = res['token'] as String;

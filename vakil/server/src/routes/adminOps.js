@@ -185,7 +185,7 @@ adminOpsRouter.get('/verifications', run(async () => {
       id: l._id.toString(), name: nameOf(l, 'Lawyer'), email: l.email || p.email || null, phone: l.phone || null, photoUrl: l.profile?.photoUrl || null,
       status: verificationStatusOf(l), submittedAt: reg.submittedAt || null, approvedAt: l.approvedAt || null, approvedBy: l.approvedBy || null, rejectionReason: l.rejectionReason || '', verificationNotes: l.verificationNotes || '', createdAt: l.createdAt || null,
       personal: { fullName: p.fullName || '', dateOfBirth: p.dateOfBirth || '', gender: p.gender || '', faceVerified: Boolean(p.faceVerified) },
-      advocate: { barCouncilRegNo: a.barCouncilRegNo || '', practiceArea: a.practiceArea || '', city: a.city || '', court: a.court || '', languages: a.languages || '', licenseFileName: a.licenseFileName || '' },
+      advocate: { barCouncilRegNo: a.barCouncilRegNo || '', barCouncilVerifiedAt: a.barCouncilVerifiedAt || null, practiceArea: a.practiceArea || '', city: a.city || '', court: a.court || '', languages: a.languages || '', licenseFileName: a.licenseFileName || '' },
       bank: bankOf(l), documents: documentsOf(l),
     };
   });

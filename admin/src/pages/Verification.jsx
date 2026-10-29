@@ -61,7 +61,7 @@ function Review({ lawyer: l, onClose, onChanged }) {
     if (reason !== null) decide({ verificationStatus: 'rejected', rejectionReason: reason }, `${l.name}'s registration was rejected. They will see your reason.`);
   };
   const p = l.personal; const a = l.advocate;
-  const checklist = [['Registration form submitted', Boolean(l.submittedAt)], ['Face verification photo', Boolean(l.documents.face)], ['Bar Council registration number', Boolean(a.barCouncilRegNo)], ['Advocate licence file', Boolean(l.documents.license)], ['Bank or UPI for payouts', Boolean(l.bank)]];
+  const checklist = [['Registration form submitted', Boolean(l.submittedAt)], ['Face verification photo', Boolean(l.documents.face)], ['Bar Council registration number', Boolean(a.barCouncilRegNo)], ['Bar Council number confirmed by email code', Boolean(a.barCouncilVerifiedAt)], ['Advocate licence file', Boolean(l.documents.license)], ['Bank or UPI for payouts', Boolean(l.bank)]];
   const rows = (items) => <dl>{items.map(([k, v]) => <React.Fragment key={k}><dt>{k}</dt><dd>{v || '—'}</dd></React.Fragment>)}</dl>;
 
   return <Drawer title={l.name} sub={`${statusText[l.status] || l.status}${l.submittedAt ? ` · submitted ${dateTime(l.submittedAt)}` : ''}`} onClose={onClose} actions={<>
