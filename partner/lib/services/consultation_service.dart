@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/chat_models.dart';
+import 'account_gone.dart';
 import 'partner_auth_service.dart';
 
 /// REST calls for requests and chats. Live updates come from RealtimeService;
@@ -72,6 +73,7 @@ class PartnerConsultationService {
     try {
       final response = await send().timeout(ApiConfig.requestTimeout);
       final data = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['code'] == 'account_deleted') AccountGone.show();
       if (response.statusCode >= 400) throw PartnerNetworkException(data['error']?.toString() ?? 'Request failed. Please try again.', statusCode: response.statusCode);
       return data;
     } on PartnerNetworkException {

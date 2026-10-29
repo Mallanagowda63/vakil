@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../screens/login_otp_screen.dart';
+import 'account_gone.dart';
 import 'app_keys.dart';
 import 'realtime_service.dart';
 
@@ -49,6 +50,8 @@ class PartnerAuthService {
       email = (res['user'] as Map?)?['email']?.toString() ?? email;
       return true;
     } on PartnerNetworkException catch (error) {
+      // Deleted by the admin: AccountGone has already signed out and shows the popup.
+      if (token == null) return false;
       if (token != saved || (error.statusCode != 401 && error.statusCode != 403)) return true;
       await logout();
       navigatorKey.currentState?.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginOtpScreen()), (route) => false);
@@ -98,6 +101,7 @@ class PartnerAuthService {
     try {
       final response = await (method == 'GET' ? http.get(uri, headers: headers) : http.post(uri, headers: headers, body: jsonEncode(body ?? {}))).timeout(ApiConfig.requestTimeout);
       final data = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['code'] == 'account_deleted' && token != null) AccountGone.show();
       if (response.statusCode >= 400) throw PartnerNetworkException(data['error']?.toString() ?? 'Sign in failed. Please try again.', statusCode: response.statusCode);
       return data;
     } on PartnerNetworkException {

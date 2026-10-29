@@ -220,8 +220,10 @@ async function deleteAccount(req, res, role) {
   if (!account || account.role === 'admin') return res.status(404).json({ error: `${role === 'lawyer' ? 'Lawyer' : 'Customer'} not found` });
   const active = await db.collection('consultation_requests').findOne({ [role === 'lawyer' ? 'lawyerId' : 'userId']: _id, status: { $in: ['PENDING', 'ONGOING'] } });
   if (active) return res.status(409).json({ error: 'They have a chat waiting or in progress. End it first, then delete the account.' });
-  disconnectAccount(role, _id);
   await db.collection(collection).deleteOne({ _id });
+  // The open app shows "your account was deleted", then its connection closes.
+  emitTo(role, _id, 'account_deleted', { role });
+  setTimeout(() => disconnectAccount(role, _id), 1500).unref?.();
   await Promise.all([
     role === 'lawyer' ? db.collection('lawyer_documents').deleteMany({ lawyerId: _id }) : null,
     account.email ? db.collection('otps').deleteMany({ email: account.email, role }) : null,

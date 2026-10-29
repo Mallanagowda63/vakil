@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../config/api_config.dart';
+import 'account_gone.dart';
 
 class SocketEvent {
   const SocketEvent(this.name, this.data);
@@ -87,8 +88,10 @@ class RealtimeService with WidgetsBindingObserver {
       connected.value = false;
       _offlineSince ??= DateTime.now();
     });
+    socket.on('account_deleted', (_) => AccountGone.show());
     socket.onConnectError((error) {
       debugPrint('Socket connect error: $error');
+      if (error.toString().contains('account_deleted')) { AccountGone.show(); return; }
       ApiConfig.findServer();
     });
     _socket = socket..connect();

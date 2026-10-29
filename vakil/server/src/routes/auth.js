@@ -126,6 +126,9 @@ authRouter.post('/login', async (req, res) => {
   catch (e) { if (!e.status) throw e; res.status(e.status).json({ error: e.message }); }
 });
 
+// A valid sign-in for an account the admin has deleted.
+const deletedAccount = { error: 'This account was deleted. Please create a new account.', code: 'account_deleted' };
+
 export async function requireAuth(req, res, next) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/, '');
   if (!token) return res.status(401).json({ error: 'Missing token' });
@@ -133,7 +136,8 @@ export async function requireAuth(req, res, next) {
     const claims = jwt.verify(token, secret());
     const collection = accountCollection(claims.role);
     const user = await getDb().collection(collection).findOne({ _id: new ObjectId(claims.sub) });
-    if (!user || user.blocked || (claims.role === 'admin' && !adminAllowed(user))) return res.status(403).json({ error: 'Account unavailable' });
+    if (!user) return res.status(403).json(deletedAccount);
+    if (user.blocked || (claims.role === 'admin' && !adminAllowed(user))) return res.status(403).json({ error: 'Account unavailable', code: 'account_blocked' });
     req.user = user; req.auth = claims; next();
   } catch {
     for (const previousSecret of (process.env.JWT_PREVIOUS_SECRETS || '').split(',').filter(Boolean)) {
@@ -141,7 +145,8 @@ export async function requireAuth(req, res, next) {
         const claims = jwt.verify(token, previousSecret);
         const collection = accountCollection(claims.role);
         const user = await getDb().collection(collection).findOne({ _id: new ObjectId(claims.sub) });
-        if (!user || user.blocked || (claims.role === 'admin' && !adminAllowed(user))) return res.status(403).json({ error: 'Account unavailable' });
+        if (!user) return res.status(403).json(deletedAccount);
+        if (user.blocked || (claims.role === 'admin' && !adminAllowed(user))) return res.status(403).json({ error: 'Account unavailable', code: 'account_blocked' });
         req.user = user;
         req.auth = { ...claims, legacy: true };
         return next();

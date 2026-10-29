@@ -18,6 +18,7 @@ async function authenticate(token) {
     let claims; try { claims = jwt.verify(token, key); } catch { continue; }
     // Admin live updates only while the account is still an admin.
     if (claims.role === 'admin' && !adminAllowed(await getDb().collection('admins').findOne({ _id: new ObjectId(claims.sub) }))) return null;
+    if ((claims.role === 'user' || claims.role === 'lawyer') && !(await getDb().collection(claims.role === 'lawyer' ? 'lawyers' : 'users').findOne({ _id: new ObjectId(claims.sub) }, { projection: { _id: 1 } }))) return { deleted: true };
     return claims;
   }
   const user = token && await getDb().collection('users').findOne({ token });
@@ -66,6 +67,7 @@ export function initRealtime(server) {
     if (!isDbConnected()) return next(new Error('starting'));
     const claims = await authenticate(socket.handshake.auth?.token).catch(() => null);
     if (!claims) return next(new Error('unauthorized'));
+    if (claims.deleted) return next(new Error('account_deleted'));
     socket.auth = claims; socket.actorId = new ObjectId(claims.sub);
     next();
   });
