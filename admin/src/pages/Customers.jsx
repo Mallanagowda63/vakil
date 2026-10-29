@@ -15,6 +15,12 @@ export default function Customers() {
     if (confirmText && !window.confirm(confirmText)) return;
     try { await api(`/api/admin/users/${u.id}`, { method: 'PATCH', body: JSON.stringify(body) }); refresh(); } catch (e) { alert(e.message); }
   }
+  async function remove(u) {
+    const left = u.walletBalance > 0 ? `\n\nTheir wallet still has ${money(u.walletBalance)}. Refund it first if it is owed.` : '';
+    if (window.prompt(`Delete ${u.name}'s account for good?${left}\n\nTheir chats, payments and reviews stay in the records. Type DELETE to confirm.`) !== 'DELETE') return;
+    try { await api(`/api/admin/users/${u.id}`, { method: 'DELETE' }); refresh(); } catch (e) { alert(e.message); }
+  }
+
   return <>
     <PageHead title="Customer Management" desc="Customers, wallet balances, consultation activity and risk controls in INR.">
       <select value={risk} onChange={(e) => setRisk(e.target.value)}><option value="">Filter risk status</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
@@ -35,7 +41,7 @@ export default function Customers() {
         { label: 'Total Spent', render: (u) => money(u.totalSpent) },
         { label: 'Consultations', render: (u) => <><Link to={`/history?userId=${u.id}`}>{u.chats} chats</Link><small><Link to={`/calls?accountId=${u.id}`}>{u.calls} calls</Link> · {u.requests} requests</small></> },
         { label: 'Risk Level', render: (u) => <select className={`ld-risk ${u.riskLevel}`} value={u.riskLevel} onChange={(e) => update(u, { riskLevel: e.target.value })}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select> },
-        { label: 'Manage', render: (u) => <button className={`view ${u.blocked ? '' : 'danger'}`} onClick={() => update(u, { blocked: !u.blocked }, u.blocked ? null : `Block ${u.name}? They are signed out at once and cannot sign in again.`)}>{u.blocked ? 'Unblock' : 'Block'}</button> },
+        { label: 'Manage', render: (u) => <><button className={`view ${u.blocked ? '' : 'danger'}`} onClick={() => update(u, { blocked: !u.blocked }, u.blocked ? null : `Block ${u.name}? They are signed out at once and cannot sign in again.`)}>{u.blocked ? 'Unblock' : 'Block'}</button> <button className="view danger" onClick={() => remove(u)}>Delete</button></> },
       ]} />
     </Card>
     {walletOf && <CustomerWallet userId={walletOf} onClose={() => setWalletOf(null)} />}

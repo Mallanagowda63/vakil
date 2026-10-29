@@ -208,6 +208,33 @@ adminRouter.get('/users', async (req, res) => {
 });
 
 // Block / unblock and the admin's risk rating.
+// Deletes a customer or lawyer account. Refused while they have a chat waiting
+// or in progress. Their chats, messages, payments, wallet entries and reviews
+// stay (money records and reports must add up; names are kept on each chat).
+// The account, its documents, codes and notifications go, and the deletion is
+// logged in account_deletions. The email and phone can sign up again.
+async function deleteAccount(req, res, role) {
+  const _id = toId(req.params.id); if (!_id) return res.status(400).json({ error: 'Invalid id' });
+  const db = getDb(); const collection = role === 'lawyer' ? 'lawyers' : 'users';
+  const account = await db.collection(collection).findOne({ _id });
+  if (!account || account.role === 'admin') return res.status(404).json({ error: `${role === 'lawyer' ? 'Lawyer' : 'Customer'} not found` });
+  const active = await db.collection('consultation_requests').findOne({ [role === 'lawyer' ? 'lawyerId' : 'userId']: _id, status: { $in: ['PENDING', 'ONGOING'] } });
+  if (active) return res.status(409).json({ error: 'They have a chat waiting or in progress. End it first, then delete the account.' });
+  disconnectAccount(role, _id);
+  await db.collection(collection).deleteOne({ _id });
+  await Promise.all([
+    role === 'lawyer' ? db.collection('lawyer_documents').deleteMany({ lawyerId: _id }) : null,
+    account.email ? db.collection('otps').deleteMany({ email: account.email, role }) : null,
+    db.collection('notifications').deleteMany({ recipientId: _id }),
+  ].filter(Boolean));
+  const name = account.profile?.fullName || account.registration?.personal?.fullName || '';
+  await db.collection('account_deletions').insertOne({ role, accountId: _id, name, email: account.email || null, phone: account.phone || null, walletBalance: account.walletBalance ?? null, deletedBy: req.user.email || req.user.phone || 'admin', deletedAt: new Date() });
+  console.log(`[ADMIN] ${req.user.email || 'admin'} deleted ${role} ${account.email || account.phone || _id} (${name || 'no name'})`);
+  res.json({ ok: true });
+}
+adminRouter.delete('/users/:id', (req, res) => deleteAccount(req, res, 'user'));
+adminRouter.delete('/lawyers/:id', (req, res) => deleteAccount(req, res, 'lawyer'));
+
 adminRouter.patch('/users/:id', async (req, res) => {
   const _id = toId(req.params.id); if (!_id) return res.status(400).json({ error: 'Invalid id' });
   const set = {};

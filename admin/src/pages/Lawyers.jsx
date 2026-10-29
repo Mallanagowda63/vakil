@@ -62,6 +62,12 @@ function LawyerWorkspace({ id, onChanged, onClose }) {
     setBusy(true);
     try { await api(`/api/admin/lawyers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }); await refresh(); onChanged(); } catch (e) { alert(e.message); } finally { setBusy(false); }
   }
+  async function remove() {
+    const left = l.money?.withdrawable > 0 ? `\n\nThey still have ${money(l.money.withdrawable)} of earnings not paid out.` : '';
+    if (window.prompt(`Delete ${l.name}'s account for good?${left}\n\nTheir chats, payments and reviews stay in the records. Type DELETE to confirm.`) !== 'DELETE') return;
+    setBusy(true);
+    try { await api(`/api/admin/lawyers/${id}`, { method: 'DELETE' }); onChanged(); onClose(); } catch (e) { alert(e.message); setBusy(false); }
+  }
   if (!l) return <Card title="Lawyer Detail Workspace"><ErrorNote error={error} />{!error && <div className="no-results">Loading…</div>}</Card>;
   const r = l.registration;
   const checklist = [['Profile details', Boolean(r.submittedAt)], ['Bar Council registration', Boolean(r.barCouncilRegNo)], ['Advocate licence file', r.licenseUploaded], ['Face verification', r.faceVerified], ['Bank or UPI for payouts', Boolean(l.bank)]];
@@ -70,6 +76,7 @@ function LawyerWorkspace({ id, onChanged, onClose }) {
     {l.verificationStatus !== 'suspended' && <button className="ld-btn warn" disabled={busy} onClick={() => save({ verificationStatus: 'suspended' }, `Suspend ${l.name}? They are signed out and stop receiving requests.`)}>Suspend</button>}
     {l.verificationStatus === 'suspended' && <button className="ld-btn good" disabled={busy} onClick={() => save({ blocked: false })}>Lift suspension</button>}
     {!['rejected', 'approved'].includes(l.verificationStatus) && <button className="ld-btn bad" disabled={busy} onClick={() => save({ verificationStatus: 'rejected' }, `Reject ${l.name}'s registration?`)}>Reject</button>}
+    <button className="ld-btn bad" disabled={busy} onClick={remove}>Delete</button>
     <button className="secondary" onClick={onClose}>Close</button></>}>
     <div className="ld-work">
       <div className="ld-work-side">
