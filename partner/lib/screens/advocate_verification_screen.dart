@@ -92,7 +92,7 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
           Text('₹$max', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
         ]),
         const SizedBox(height: 6),
-        const Text('Clients pay this for each 10 minutes of chat. A client's very first chat on Vakil is a free 1-minute trial. You can ask the Vakil team to change it later.', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary, height: 1.35)),
+        const Text("Clients pay this for each 10 minutes of chat. A client's very first chat on Vakil is a free 1-minute trial. You can ask the Vakil team to change it later.", style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary, height: 1.35)),
         const SizedBox(height: 6),
       ]),
     );
