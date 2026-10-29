@@ -198,7 +198,7 @@ export async function cancelRecharge({ user, orderId, reason }) {
 export async function rateOf(lawyer) {
   if (Number.isFinite(lawyer?.ratePerMinute)) return lawyer.ratePerMinute;
   const pricing = await getDb().collection('settings').findOne({ key: 'pricing' });
-  return round2(pricing?.value?.chatPerMinute ?? 10);
+  return round2(pricing?.value?.chatPerMinute ?? 20);
 }
 
 // Voice calls have one platform price (Admin Panel → Pricing, "Call per minute").
