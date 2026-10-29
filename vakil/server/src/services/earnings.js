@@ -32,6 +32,13 @@ export async function creditLawyer(request, gross, { reason = 'chat', note = '' 
 }
 
 // Partner App home and wallet: today's numbers, balance and recent entries.
+// Where payouts go: the bank / UPI details from registration (Partner App →
+// Payout methods can change them). The full account number never leaves the server.
+export const payoutDetailsOf = (lawyer) => {
+  const b = lawyer?.registration?.bank || {}; const account = String(b.accountNumber || '');
+  return { holderName: b.holderName || '', ifsc: b.ifsc || '', accountLast4: account ? account.slice(-4) : '', upi: b.upi || '' };
+};
+
 export async function earningsSummary(lawyerId) {
   const db = getDb(); const since = startOfToday(); const isToday = (d) => d && new Date(d) >= since;
   const [rows, payouts, requests, missedCalls, lawyer, payoutRules] = await Promise.all([
@@ -60,6 +67,7 @@ export async function earningsSummary(lawyerId) {
     paidOut: Math.abs(sum(settled.filter((r) => r.type === 'payout'), (r) => r.amount)),
     balance, pendingPayouts: queued, available: Math.max(0, round2(balance - queued)),
     commissionPercent: await commissionPercentOf(lawyer), minimumWithdrawal: payoutRules.minimumWithdrawal,
+    payoutDetails: payoutDetailsOf(lawyer),
     transactions: rows.slice(0, 50).map((r) => ({ id: r._id.toString(), type: r.type, reason: r.reason || null, amount: r.amount, gross: r.gross ?? null, commission: r.commission ?? null, clientName: r.clientName || null, note: r.note || '', status: r.status || 'settled', requestId: r.requestId?.toString() || null, createdAt: r.createdAt })),
   };
 }

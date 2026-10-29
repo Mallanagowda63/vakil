@@ -19,7 +19,9 @@ export async function chatFor(requestId, actor) {
 // Validates, stores, then delivers a message. The DB write always happens
 // before anyone is told about the message. A repeated clientId (an offline
 // message re-sent on reconnect) returns the stored copy instead of a duplicate.
-export async function sendChatMessage({ requestId, sender, text, clientId }) {
+// [attachment] (a file already checked by saveAttachment) makes it a photo or
+// file message; its text is the file name, for chat lists and notifications.
+export async function sendChatMessage({ requestId, sender, text, clientId, attachment = null }) {
   const request = await chatFor(requestId, sender);
   if (sender.role === 'admin') throw fail(403, 'Admins cannot send messages');
   if (request.status === 'COMPLETED') throw fail(403, 'This chat has ended');
@@ -27,23 +29,25 @@ export async function sendChatMessage({ requestId, sender, text, clientId }) {
   if (request.endsAt && new Date() >= new Date(request.endsAt)) throw fail(403, 'Chat time is over');
   // A call consultation stays a call; messages are only for chat consultations.
   if (request.consultationType === 'call') throw fail(403, 'This is a voice call consultation. Messages are not available here.');
-  const body = String(text || '').trim();
+  const body = attachment ? attachment.fileName : String(text || '').trim();
   if (!body || body.length > 4000) throw fail(400, 'Message must contain 1 to 4000 characters');
   const db = getDb(); const messages = db.collection('messages');
+  // The same rules apply to files as to text, checked before anything is stored.
+  if (attachment?.check) return null;
   const cleanClientId = clientId ? String(clientId).slice(0, 64) : null;
   if (cleanClientId) {
     const existing = await messages.findOne({ requestId: request._id, senderId: sender.id, clientId: cleanClientId });
     if (existing) return serialize(existing);
   }
   const recipient = counterpart(request, sender.role);
-  const message = { requestId: request._id, senderId: sender.id, senderRole: sender.role, recipientId: recipient.id, recipientRole: recipient.role, type: 'text', text: body, clientId: cleanClientId, status: 'sent', createdAt: new Date(), deliveredAt: null, readAt: null };
+  const message = { requestId: request._id, senderId: sender.id, senderRole: sender.role, recipientId: recipient.id, recipientRole: recipient.role, type: attachment ? attachment.type : 'text', text: body, ...(attachment ? { attachment: attachment.meta } : {}), clientId: cleanClientId, status: 'sent', createdAt: new Date(), deliveredAt: null, readAt: null };
   const { insertedId } = await messages.insertOne(message); message._id = insertedId;
   const payload = serialize(message);
   emitToChat(request._id, 'new_message', payload);
   emitAdmin('new_message', payload);
   if (!isConnected(recipient.role, recipient.id)) {
     const name = sender.role === 'lawyer' ? request.lawyerName : request.userName;
-    await notify({ recipientId: recipient.id, recipientRole: recipient.role, title: name || 'New message', body: body.slice(0, 120), data: { type: 'new_message', requestId: request._id.toString() }, channel: recipient.role === 'lawyer' ? 'chat_messages' : null });
+    await notify({ recipientId: recipient.id, recipientRole: recipient.role, title: name || 'New message', body: attachment ? (attachment.type === 'image' ? '📷 Photo' : `📎 ${body}`).slice(0, 120) : body.slice(0, 120), data: { type: 'new_message', requestId: request._id.toString() }, channel: recipient.role === 'lawyer' ? 'chat_messages' : null });
   }
   return payload;
 }

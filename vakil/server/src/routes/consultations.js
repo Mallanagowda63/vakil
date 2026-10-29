@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDb } from '../db.js';
 import { requireAuth, roles } from './auth.js';
@@ -6,6 +6,8 @@ import { emitAdmin, emitTo, joinChatRoom } from '../realtime.js';
 import { notify } from '../push.js';
 import { activeStatuses, completeSession, isAvailable, isCallAvailable, serialize, transition } from '../services/consultations.js';
 import { listMessages, markMessages, sendChatMessage } from '../services/messages.js';
+import { findAttachment, sendAttachment } from '../services/attachments.js';
+import { bytesOf } from '../services/lawyerDocuments.js';
 import { listCalls, startCall } from '../services/calls.js';
 import { MINUTE_MS, addTime, chargeMinute, isPaidChat, payPackage, validMinutes } from '../services/billing.js';
 import { consultationRateOf } from '../services/wallet.js';
@@ -126,6 +128,35 @@ consultationRouter.get('/:id/calls', requireAuth, async (req, res) => {
 consultationRouter.post('/:id/messages', ...roles('user', 'lawyer'), async (req, res) => {
   try { res.status(201).json({ message: await sendChatMessage({ requestId: req.params.id, sender: actorOf(req), text: req.body.text, clientId: req.body.clientId }) }); }
   catch (e) { if (!e.status) throw e; sendError(res, e); }
+});
+
+// Photos and files: POST { file: <base64>, contentType, fileName, clientId }
+// sends one into the chat; GET returns its bytes to the people in the chat.
+consultationRouter.post('/:id/attachments', express.json({ limit: '15mb' }), ...roles('user', 'lawyer'), async (req, res) => {
+  try { res.status(201).json({ message: await sendAttachment({ requestId: req.params.id, sender: actorOf(req), file: req.body.file, contentType: req.body.contentType, fileName: req.body.fileName, clientId: req.body.clientId }) }); }
+  catch (e) { if (!e.status) throw e; sendError(res, e); }
+});
+
+consultationRouter.get('/:id/attachments/:attachmentId', requireAuth, async (req, res) => {
+  try {
+    const file = await findAttachment({ requestId: req.params.id, attachmentId: req.params.attachmentId, actor: actorOf(req) });
+    res.set({ 'Content-Type': file.contentType, 'Content-Length': file.size, 'Cache-Control': 'private, max-age=604800', 'Content-Disposition': `inline; filename="${encodeURIComponent(file.fileName)}"` });
+    res.end(bytesOf(file.data));
+  } catch (e) { if (!e.status) throw e; sendError(res, e); }
+});
+
+// Either side reports the other after a chat; it lands in the Admin Panel's Complaints.
+consultationRouter.post('/:id/report', ...roles('user', 'lawyer'), async (req, res) => {
+  const id = objectId(req.params.id); const request = id && await getDb().collection('consultation_requests').findOne({ _id: id, ...ownFilter(req) });
+  if (!request) return res.status(404).json({ error: 'Consultation not found' });
+  const reason = String(req.body.reason || '').trim().slice(0, 60) || 'Other';
+  const details = String(req.body.details || '').trim().slice(0, 2000);
+  const complaints = getDb().collection('complaints'); const now = new Date();
+  const ticket = `CMP-${String((await complaints.countDocuments({})) + 1).padStart(4, '0')}`;
+  const by = req.auth.role === 'lawyer' ? `Lawyer ${request.lawyerName || ''}`.trim() : `Client ${request.userName || ''}`.trim();
+  await complaints.insertOne({ ticket, requestId: request._id, userId: request.userId, lawyerId: request.lawyerId, customerName: request.userName, lawyerName: request.lawyerName, category: reason, description: `Reported by ${by}.${details ? ` ${details}` : ''}`, priority: 'medium', status: 'open', notes: [], createdAt: now, updatedAt: now, createdBy: req.auth.role });
+  emitAdmin('complaint_created', { ticket });
+  res.status(201).json({ ticket });
 });
 
 async function change(req, res, from, to, extra = {}) {

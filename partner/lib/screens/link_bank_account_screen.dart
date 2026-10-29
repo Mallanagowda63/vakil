@@ -2,17 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/wallet_data.dart';
+import '../services/partner_auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/labeled_text_field.dart';
 import '../widgets/primary_button.dart';
-
-/// A tiny built-in demo directory of IFSC codes so the "Verify" step can look
-/// up a real-looking branch name without calling an external API.
-const _ifscDirectory = {
-  'HDFC0000124': 'HDFC Bank, Kasturba Gandhi Marg, New Delhi',
-  'SBIN0001234': 'State Bank of India, Connaught Place, New Delhi',
-  'ICIC0000456': 'ICICI Bank, Bandra West, Mumbai',
-};
 
 class LinkBankAccountScreen extends StatefulWidget {
   const LinkBankAccountScreen({super.key});
@@ -23,11 +16,10 @@ class LinkBankAccountScreen extends StatefulWidget {
 
 class _LinkBankAccountScreenState extends State<LinkBankAccountScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _holderCtrl = TextEditingController(text: 'Adv. Rajesh Kumar Sharma');
+  final _holderCtrl = TextEditingController();
   final _ifscCtrl = TextEditingController();
   final _accountCtrl = TextEditingController();
   final _confirmAccountCtrl = TextEditingController();
-  String? _branch;
   bool _verifying = false;
 
   @override
@@ -39,11 +31,6 @@ class _LinkBankAccountScreenState extends State<LinkBankAccountScreen> {
     super.dispose();
   }
 
-  void _onIfscChanged(String value) {
-    final upper = value.trim().toUpperCase();
-    setState(() => _branch = _ifscDirectory[upper]);
-  }
-
   Future<void> _verifyAndLink() async {
     if (!_formKey.currentState!.validate()) return;
     if (_accountCtrl.text.trim() != _confirmAccountCtrl.text.trim()) {
@@ -53,24 +40,24 @@ class _LinkBankAccountScreenState extends State<LinkBankAccountScreen> {
       return;
     }
     setState(() => _verifying = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
-    context.read<WalletController>().linkBankAccount(
-          holderName: _holderCtrl.text.trim(),
-          ifsc: _ifscCtrl.text.trim().toUpperCase(),
-          branch: _branch ?? 'Bank branch on record',
-          accountNumber: _accountCtrl.text.trim(),
-        );
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Bank account linked successfully')),
-    );
+    try {
+      await context.read<WalletController>().linkBankAccount(
+            holderName: _holderCtrl.text.trim(),
+            ifsc: _ifscCtrl.text.trim().toUpperCase(),
+            accountNumber: _accountCtrl.text.trim(),
+          );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bank account saved. Payouts will go here.')));
+    } on PartnerNetworkException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _verifying = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final ifscVerified = _branch != null;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Link Bank Account')),
       body: SafeArea(
@@ -92,27 +79,17 @@ class _LinkBankAccountScreenState extends State<LinkBankAccountScreen> {
                 TextFormField(
                   controller: _ifscCtrl,
                   textCapitalization: TextCapitalization.characters,
-                  onChanged: _onIfscChanged,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
                     LengthLimitingTextInputFormatter(11),
                   ],
-                  decoration: InputDecoration(
-                    hintText: 'e.g. HDFC0000124',
-                    suffixIcon: ifscVerified
-                        ? const Icon(Icons.check_circle, color: AppColors.success, size: 20)
-                        : null,
-                  ),
+                  decoration: const InputDecoration(hintText: 'e.g. SBIN0001234'),
                   validator: (v) {
                     final value = v?.trim().toUpperCase() ?? '';
                     if (value.isEmpty) return 'Required';
                     return RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(value) ? null : 'Enter a valid IFSC code';
                   },
                 ),
-                if (_branch != null) ...[
-                  const SizedBox(height: 6),
-                  Text('✓ $_branch', style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600)),
-                ],
                 const SizedBox(height: 16),
                 LabeledTextField(
                   label: 'Account Number',
@@ -142,7 +119,7 @@ class _LinkBankAccountScreenState extends State<LinkBankAccountScreen> {
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'We will deposit ₹1.00 to verify this account instantly.',
+                          'The name must match your bank records. The Vakil team checks these details before your first payout.',
                           style: TextStyle(fontSize: 12, color: AppColors.primaryDark),
                         ),
                       ),
@@ -151,7 +128,7 @@ class _LinkBankAccountScreenState extends State<LinkBankAccountScreen> {
                 ),
                 const SizedBox(height: 22),
                 PrimaryButton(
-                  label: 'Verify & Link Bank Account',
+                  label: 'Save Bank Account',
                   loading: _verifying,
                   onPressed: _verifying ? null : _verifyAndLink,
                 ),

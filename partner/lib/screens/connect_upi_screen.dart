@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/wallet_data.dart';
+import '../services/partner_auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/labeled_text_field.dart';
 import '../widgets/primary_button.dart';
@@ -16,17 +17,13 @@ class ConnectUpiScreen extends StatefulWidget {
 
 class _ConnectUpiScreenState extends State<ConnectUpiScreen> {
   late final _vpaCtrl = TextEditingController();
-  String? _verifiedName;
   bool _verifying = false;
 
   bool get _looksValid => RegExp(r'^[\w.\-]{2,}@[a-zA-Z]{2,}$').hasMatch(_vpaCtrl.text.trim());
 
   void _appendHandle(String handle) {
     final current = _vpaCtrl.text.split('@').first;
-    setState(() {
-      _vpaCtrl.text = '$current$handle';
-      _verifiedName = null;
-    });
+    setState(() => _vpaCtrl.text = '$current$handle');
   }
 
   Future<void> _verifyAndLink() async {
@@ -37,18 +34,16 @@ class _ConnectUpiScreenState extends State<ConnectUpiScreen> {
       return;
     }
     setState(() => _verifying = true);
-    await Future.delayed(const Duration(milliseconds: 1100));
-    if (!mounted) return;
-    setState(() {
-      _verifying = false;
-      _verifiedName = 'RAJESH KUMAR SHARMA';
-    });
-    context.read<WalletController>().linkUpi(_vpaCtrl.text.trim(), _verifiedName!);
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('UPI ID linked successfully')),
-    );
+    try {
+      await context.read<WalletController>().linkUpi(_vpaCtrl.text.trim());
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('UPI ID saved. Payouts will go here.')));
+    } on PartnerNetworkException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _verifying = false);
+    }
   }
 
   @override
@@ -79,7 +74,7 @@ class _ConnectUpiScreenState extends State<ConnectUpiScreen> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Your settlements are securely processed via certified payment partners.',
+                        'Vakil sends your payouts to this UPI ID. Double-check it before saving.',
                         style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -92,7 +87,7 @@ class _ConnectUpiScreenState extends State<ConnectUpiScreen> {
                 required: true,
                 controller: _vpaCtrl,
                 hint: 'yourname@bank',
-                onChanged: (_) => setState(() => _verifiedName = null),
+                onChanged: (_) => setState(() {}),
               ),
               const Text('Popular handles:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
@@ -108,32 +103,9 @@ class _ConnectUpiScreenState extends State<ConnectUpiScreen> {
                     .toList(),
               ),
               const SizedBox(height: 20),
-              if (_verifiedName != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE6F7EE),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFB7E4CC)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle, color: AppColors.success, size: 20),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('VPA HOLDER NAME', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, letterSpacing: 0.3)),
-                          Text(_verifiedName!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               const SizedBox(height: 28),
               PrimaryButton(
-                label: 'Verify & Link UPI',
+                label: 'Save UPI ID',
                 loading: _verifying,
                 onPressed: _verifying ? null : _verifyAndLink,
               ),

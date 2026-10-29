@@ -10,6 +10,7 @@ import 'feedback_screen.dart';
 import 'lawyer_profile_screen.dart';
 import 'lawyers_screen.dart';
 import 'login_otp_screen.dart';
+import 'support_screen.dart';
 
 /// The client's details from registration (name, language, phone, gender,
 /// Aadhaar, email, emergency contact) and profile photo, all editable. The
@@ -199,6 +200,12 @@ class _ProfileTabState extends State<ProfileTab> {
                 label: 'My Feedback & Ratings',
                 leading: const Icon(Icons.star_outline_rounded, size: 18, color: AppColors.starGold),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FeedbackScreen())),
+              ),
+              const SizedBox(height: 10),
+              OutlineButton(
+                label: 'Help & Support',
+                leading: const Icon(Icons.support_agent_outlined, size: 18, color: AppColors.blueAccent),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SupportScreen())),
               ),
               const SizedBox(height: 22),
               Text('REGISTRATION DETAILS', style: AppText.h3(AppColors.textDark)),

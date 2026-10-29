@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../services/consultation_service.dart';
 import '../services/partner_auth_service.dart';
 import '../services/registration_sync.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primary_button.dart';
 import 'dashboard_screen.dart';
+import 'customer_support_screen.dart';
 import 'login_otp_screen.dart';
 import 'personal_details_screen.dart';
 
@@ -127,38 +127,7 @@ class _ActivationPendingScreenState extends State<ActivationPendingScreen>
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginOtpScreen()), (route) => false);
   }
 
-  Future<void> _contactSupport() async {
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.email_outlined),
-              title: const Text('Email support'),
-              subtitle: const Text('support@vakilpartner.com'),
-              onTap: () => Navigator.pop(sheetContext, 'mailto:support@vakilpartner.com'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.call_outlined),
-              title: const Text('Call support'),
-              subtitle: const Text('+91 98765 43210'),
-              onTap: () => Navigator.pop(sheetContext, 'tel:+919876543210'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (result != null) {
-      final uri = Uri.parse(result);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
-    }
-  }
+  Future<void> _contactSupport() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CustomerSupportScreen()));
 
   @override
   Widget build(BuildContext context) {

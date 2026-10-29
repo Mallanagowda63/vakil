@@ -18,6 +18,10 @@ export async function saveDocument({ lawyerId, kind, bytes, contentType, fileNam
   return meta;
 }
 
+/** The stored bytes as a Buffer: MongoDB returns a BSON Binary (bytes in
+ *  `.buffer`), the offline mock a Buffer, whose `.buffer` is a shared pool. */
+export const bytesOf = (data) => Buffer.isBuffer(data) ? data : Buffer.from(data?.buffer ?? data);
+
 export const findDocument = (lawyerId, kind) => col().findOne({ lawyerId, kind });
 
 /** What the Admin Panel shows for each kind: file details, or null when not uploaded. */

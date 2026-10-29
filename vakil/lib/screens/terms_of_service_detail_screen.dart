@@ -27,7 +27,7 @@ const _sections = [
   _Section('8. Limitation of Liability',
       'To the maximum extent permitted by law, we shall not be liable for any indirect or consequential damages.'),
   _Section('9. Contact Us',
-      'If you have any questions about these Terms, please contact us at support@example.com.'),
+      'If you have any questions about these Terms, write to us from Profile → Help & Support in the app.'),
 ];
 
 class TermsOfServiceDetailScreen extends StatelessWidget {

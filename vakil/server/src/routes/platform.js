@@ -4,7 +4,7 @@ import { requireAuth, roles } from './auth.js';
 import { lawyerStatus, statusRank } from '../services/consultations.js';
 import { callRateOf, rateOf, round2 } from '../services/wallet.js';
 import { announceLawyer, emitAdmin } from '../realtime.js';
-import { earningsSummary, requestPayout } from '../services/earnings.js';
+import { earningsSummary, payoutDetailsOf, requestPayout } from '../services/earnings.js';
 import { MAX_DOCUMENT_BYTES, documentKinds, documentTypes, saveDocument } from '../services/lawyerDocuments.js';
 
 export const platformRouter = Router();
@@ -72,6 +72,50 @@ platformRouter.post('/lawyers/me/documents', express.json({ limit: '8mb' }), ...
   const document = await saveDocument({ lawyerId: req.user._id, kind, bytes, contentType, fileName: req.body.fileName });
   emitAdmin('lawyer_status_changed', { id: req.user._id.toString() });
   res.status(201).json({ document });
+});
+
+// POST /api/support { topic, message }: a help request from either app. It
+// opens a ticket in the Admin Panel's Complaints so the team can answer.
+platformRouter.post('/support', ...roles('user', 'lawyer'), async (req, res) => {
+  const topic = String(req.body.topic || '').trim().slice(0, 60) || 'Other';
+  const message = String(req.body.message || '').trim().slice(0, 2000);
+  if (message.length < 5) return res.status(400).json({ error: 'Tell us a little more about the problem' });
+  const lawyer = req.auth.role === 'lawyer'; const name = req.user.profile?.fullName || req.user.registration?.personal?.fullName || req.user.email || 'Unknown';
+  const complaints = getDb().collection('complaints'); const now = new Date();
+  const ticket = `CMP-${String((await complaints.countDocuments({})) + 1).padStart(4, '0')}`;
+  await complaints.insertOne({
+    ticket, requestId: null, userId: lawyer ? null : req.user._id, lawyerId: lawyer ? req.user._id : null,
+    customerName: lawyer ? '—' : name, lawyerName: lawyer ? name : '—', category: `Help: ${topic}`,
+    description: `${message}\n\nFrom ${lawyer ? 'lawyer' : 'client'} ${name}${req.user.email ? ` (${req.user.email})` : ''}${req.user.phone ? `, ${req.user.phone}` : ''}.`,
+    priority: 'medium', status: 'open', notes: [], createdAt: now, updatedAt: now, createdBy: req.auth.role,
+  });
+  emitAdmin('complaint_created', { ticket });
+  res.status(201).json({ ticket });
+});
+
+// PATCH /api/lawyers/me/payout-details { upi } or { holderName, ifsc, accountNumber }:
+// where the Admin Panel sends this lawyer's payouts.
+platformRouter.patch('/lawyers/me/payout-details', ...roles('lawyer'), async (req, res) => {
+  const text = (v, max) => String(v ?? '').trim().slice(0, max);
+  if (req.body.upi === undefined && req.body.accountNumber === undefined) return res.status(400).json({ error: 'Nothing to update' });
+  const bank = { ...(req.user.registration?.bank || {}) };
+  if (req.body.upi !== undefined) {
+    const upi = text(req.body.upi, 80).toLowerCase();
+    if (!/^[\w.\-]{2,}@[a-z][a-z0-9]{1,}$/.test(upi)) return res.status(400).json({ error: 'Enter a valid UPI ID, like name@okaxis' });
+    bank.upi = upi;
+  }
+  if (req.body.accountNumber !== undefined) {
+    const accountNumber = text(req.body.accountNumber, 30).replace(/\s/g, ''); const ifsc = text(req.body.ifsc, 20).toUpperCase(); const holderName = text(req.body.holderName, 120);
+    if (!/^\d{9,18}$/.test(accountNumber)) return res.status(400).json({ error: 'Enter a valid account number' });
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) return res.status(400).json({ error: 'Enter a valid IFSC code' });
+    if (!holderName) return res.status(400).json({ error: 'Enter the account holder name' });
+    Object.assign(bank, { accountNumber, ifsc, holderName });
+  }
+  // A lawyer without a registration yet gets one holding just the payout details.
+  const set = req.user.registration && typeof req.user.registration === 'object' ? { 'registration.bank': bank } : { registration: { bank } };
+  await getDb().collection('lawyers').updateOne({ _id: req.user._id }, { $set: { ...set, updatedAt: new Date() } });
+  emitAdmin('lawyer_status_changed', { id: req.user._id.toString() });
+  res.json({ payoutDetails: payoutDetailsOf(await getDb().collection('lawyers').findOne({ _id: req.user._id })) });
 });
 
 // Partner App registration (Review & Submit): personal, advocate and bank

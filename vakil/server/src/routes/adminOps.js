@@ -4,7 +4,7 @@ import { roles } from './auth.js';
 import { adminEndCall } from '../services/calls.js';
 import { completeSession } from '../services/consultations.js';
 import { changeBalance } from '../services/wallet.js';
-import { documentKinds, documentsOf, findDocument } from '../services/lawyerDocuments.js';
+import { bytesOf, documentKinds, documentsOf, findDocument } from '../services/lawyerDocuments.js';
 import { accountsById, dateRange, idOf, nameOf, page, seconds, sendCsv, startOfToday, toId } from '../services/adminData.js';
 
 // Admin Panel: settings, money, support and reports. Money collections
@@ -200,7 +200,7 @@ adminOpsRouter.get('/lawyers/:id/documents/:kind', async (req, res) => {
   const doc = _id && documentKinds[req.params.kind] && await findDocument(_id, req.params.kind);
   if (!doc) return res.status(404).json({ error: 'Document not uploaded' });
   res.set({ 'Content-Type': doc.contentType, 'Content-Disposition': `inline; filename="${String(doc.fileName).replace(/[^\w.-]/g, '_')}"`, 'Cache-Control': 'private, no-store' });
-  res.send(Buffer.from(doc.data.buffer ?? doc.data));
+  res.send(bytesOf(doc.data));
 });
 
 export const verificationStatusOf = (l) => l.blocked ? 'suspended' : l.approved ? 'approved' : l.verificationStatus === 'rejected' ? 'rejected' : l.registration?.submittedAt ? 'under_review' : 'pending';

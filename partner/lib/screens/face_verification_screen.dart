@@ -37,9 +37,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
   }
 
   Future<void> _runVerification() async {
-    setState(() => _state = _FaceState.verifying);
-    await Future.delayed(const Duration(milliseconds: 1600));
-    if (!mounted) return;
+    // The photo is checked by the Vakil team with the licence, not on the phone.
     setState(() => _state = _FaceState.verified);
     context.read<RegistrationData>().saveFaceVerification(_photo!);
   }
@@ -120,9 +118,9 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
                     const SizedBox(height: 16),
                     Text(
                       verifying
-                          ? 'Verifying your identity...'
+                          ? 'Saving your photo...'
                           : verified
-                              ? 'Face verified successfully'
+                              ? 'Photo saved. The Vakil team will check it.'
                               : 'Position your face within the circle',
                       style: TextStyle(
                         color: verified ? AppColors.success : AppColors.primary,

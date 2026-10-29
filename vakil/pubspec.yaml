@@ -45,6 +45,9 @@ dependencies:
   firebase_messaging: ^16.7.0
   image_picker: ^1.2.3
   flutter_cashfree_pg_sdk: ^2.4.0+52
+  file_picker: ^13.1.0
+  open_filex: ^5.0.0
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

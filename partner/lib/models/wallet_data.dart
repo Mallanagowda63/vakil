@@ -96,47 +96,53 @@ class WalletController extends ChangeNotifier {
     pendingPayouts = money('pendingPayouts');
     commissionPercent = money('commissionPercent');
     minimumWithdrawal = money('minimumWithdrawal');
+    if (data['payoutDetails'] is Map) _applyPayout(Map<String, dynamic>.from(data['payoutDetails'] as Map));
     transactions
       ..clear()
       ..addAll((data['transactions'] as List? ?? const []).map((raw) => WalletTransaction.fromJson(Map<String, dynamic>.from(raw as Map))));
     notifyListeners();
   }
 
-  String? upiId = 'adv.rajesh@okaxis';
-  String? upiHolderName = 'RAJESH KUMAR SHARMA';
-
-  String? bankHolderName = 'Adv. Rajesh Kumar Sharma';
-  String? bankIfsc = 'HDFC0000124';
-  String? bankBranch = 'HDFC BANK, KASTURBA GANDHI MARG, NEW DELHI';
-  String? bankAccountLast4 = '9820';
+  // Where payouts go, from the server (registration bank details, editable
+  // under Payout methods). Only the last 4 digits of the account come back.
+  String? upiId;
+  String? bankHolderName;
+  String? bankIfsc;
+  String? bankAccountLast4;
 
   PayoutMethodType defaultMethod = PayoutMethodType.upi;
 
   bool get hasUpi => upiId != null;
-  bool get hasBank => bankIfsc != null;
+  bool get hasBank => bankAccountLast4 != null;
 
-  String get defaultMethodSummary =>
-      defaultMethod == PayoutMethodType.upi ? 'UPI · $upiId' : 'Bank Account · HDFC ****$bankAccountLast4';
+  String get defaultMethodSummary => defaultMethod == PayoutMethodType.upi && hasUpi
+      ? 'UPI · $upiId'
+      : hasBank ? 'bank account ····$bankAccountLast4' : 'your payout account';
+
+  void _applyPayout(Map<String, dynamic> details) {
+    String? text(String key) { final v = details[key]?.toString().trim() ?? ''; return v.isEmpty ? null : v; }
+    upiId = text('upi');
+    bankHolderName = text('holderName');
+    bankIfsc = text('ifsc');
+    bankAccountLast4 = text('accountLast4');
+    if (!hasUpi && hasBank) defaultMethod = PayoutMethodType.bank;
+    if (hasUpi && !hasBank) defaultMethod = PayoutMethodType.upi;
+  }
 
   /// Newest first: earnings (client payment minus commission) and payouts.
   final List<WalletTransaction> transactions = [];
 
-  void linkUpi(String vpa, String holderName) {
-    upiId = vpa;
-    upiHolderName = holderName;
-    notifyListeners();
-  }
+  /// Saves a UPI ID for payouts. Throws [PartnerNetworkException] with the reason.
+  Future<void> linkUpi(String vpa) => _savePayout({'upi': vpa});
 
-  void linkBankAccount({
-    required String holderName,
-    required String ifsc,
-    required String branch,
-    required String accountNumber,
-  }) {
-    bankHolderName = holderName;
-    bankIfsc = ifsc;
-    bankBranch = branch;
-    bankAccountLast4 = accountNumber.length >= 4 ? accountNumber.substring(accountNumber.length - 4) : accountNumber;
+  /// Saves a bank account for payouts. Throws [PartnerNetworkException] with the reason.
+  Future<void> linkBankAccount({required String holderName, required String ifsc, required String accountNumber}) =>
+      _savePayout({'holderName': holderName, 'ifsc': ifsc, 'accountNumber': accountNumber});
+
+  Future<void> _savePayout(Map<String, String> details) async {
+    final token = PartnerAuthService.instance.token;
+    if (token == null) throw const PartnerNetworkException('Please sign in again');
+    _applyPayout(await _service.savePayoutDetails(token, details));
     notifyListeners();
   }
 

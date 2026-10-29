@@ -87,7 +87,7 @@ List<LawyerSummary> sortLawyers(List<LawyerSummary> lawyers) =>
 enum MessageStatus { pending, failed, sent, delivered, read }
 
 class ChatMessage {
-  ChatMessage({required this.id, required this.requestId, required this.senderRole, required this.text, required this.createdAt, this.type = 'text', this.status = MessageStatus.sent, this.clientId, this.callStatus});
+  ChatMessage({required this.id, required this.requestId, required this.senderRole, required this.text, required this.createdAt, this.type = 'text', this.status = MessageStatus.sent, this.clientId, this.callStatus, this.attachment});
   /// Server id, or the clientId while the message is still pending.
   String id;
   final String requestId;
@@ -98,8 +98,17 @@ class ChatMessage {
   MessageStatus status;
   final String? clientId;
   final String? callStatus;
+  /// The photo or file of an 'image' / 'file' message.
+  final ChatAttachment? attachment;
 
   bool get isCall => type == 'call';
+  bool get isImage => type == 'image' && attachment != null;
+  bool get isFile => type == 'file' && attachment != null;
+  /// A photo or file the server has not deleted yet.
+  bool get hasLiveAttachment => attachment != null && !attachment!.deleted;
+
+  /// This message with its file marked deleted (after the 'attachments_deleted' event).
+  ChatMessage withAttachmentDeleted() => ChatMessage(id: id, requestId: requestId, senderRole: senderRole, text: text, createdAt: createdAt, type: type, status: status, clientId: clientId, callStatus: callStatus, attachment: attachment?.markDeleted());
   bool get isPending => status == MessageStatus.pending || status == MessageStatus.failed;
 
   static MessageStatus parseStatus(String? value) => switch (value) { 'read' => MessageStatus.read, 'delivered' => MessageStatus.delivered, _ => MessageStatus.sent };
@@ -114,6 +123,30 @@ class ChatMessage {
         status: parseStatus(json['status']?.toString()),
         clientId: json['clientId'] as String?,
         callStatus: json['callStatus'] as String?,
+        attachment: json['attachment'] is Map ? ChatAttachment.fromJson(Map<String, dynamic>.from(json['attachment'] as Map)) : null,
+      );
+}
+
+/// A photo or file sent in a chat; the bytes are fetched from the server with the sign-in token.
+class ChatAttachment {
+  const ChatAttachment({required this.id, required this.fileName, required this.contentType, required this.size, this.deleted = false});
+  final String id;
+  final String fileName;
+  final String contentType;
+  final int size;
+  /// The server deletes chat files 5 minutes after the chat ends.
+  final bool deleted;
+
+  ChatAttachment markDeleted() => ChatAttachment(id: id, fileName: fileName, contentType: contentType, size: size, deleted: true);
+
+  String get sizeLabel => size >= 1024 * 1024 ? '${(size / (1024 * 1024)).toStringAsFixed(1)} MB' : '${(size / 1024).ceil()} KB';
+
+  factory ChatAttachment.fromJson(Map<String, dynamic> json) => ChatAttachment(
+        id: json['id'].toString(),
+        fileName: json['fileName']?.toString() ?? 'File',
+        contentType: json['contentType']?.toString() ?? '',
+        size: (json['size'] as num?)?.toInt() ?? 0,
+        deleted: json['deleted'] == true,
       );
 }
 

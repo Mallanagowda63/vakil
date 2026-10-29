@@ -64,7 +64,7 @@ class _PayoutMethodsScreenState extends State<PayoutMethodsScreen> {
                         icon: Icons.account_balance_outlined,
                         title: 'Bank Account Transfer',
                         subtitle: 'IMPS/NEFT, settled next business day',
-                        connectedLabel: 'Currently Connected: HDFC Bank ****${wallet.bankAccountLast4}',
+                        connectedLabel: 'Currently Connected: ${wallet.bankIfsc == null ? 'Bank' : wallet.bankIfsc!.substring(0, 4)} ····${wallet.bankAccountLast4}',
                         selected: _selected == PayoutMethodType.bank,
                         isDefault: wallet.defaultMethod == PayoutMethodType.bank,
                         onTap: () => setState(() => _selected = PayoutMethodType.bank),

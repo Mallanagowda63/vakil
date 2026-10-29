@@ -56,30 +56,6 @@ class ConsultationRequest {
   String get clientRef => '#VP-${(id.hashCode.abs() % 9000) + 1000}';
 }
 
-class CallLogEntry {
-  final String clientName;
-  final String referenceId;
-  final DateTime time;
-  final double amount;
-  final String category;
-  final Duration duration;
-
-  const CallLogEntry({
-    required this.clientName,
-    required this.referenceId,
-    required this.time,
-    required this.amount,
-    required this.category,
-    required this.duration,
-  });
-}
-
-/// Static demo profile shown on the dashboard. In a real app this would come
-/// from the authenticated advocate's account rather than being hardcoded.
-class LawyerProfile {
-  static const rating = 4.8;
-  static const ratingCount = 120;
-}
 
 class PracticeAreaOption {
   final String title;
@@ -317,6 +293,9 @@ class DashboardController extends ChangeNotifier {
   /// Today's numbers and payouts, from the server (see [loadEarnings]).
   DashboardStats stats = DashboardStats.empty;
   FinancialSummary financials = FinancialSummary.empty;
+  /// Clients' average rating of this lawyer and how many rated (null until someone rates).
+  double? ratingAverage;
+  int ratingCount = 0;
 
   /// Refreshes today's numbers after each payment, finished chat or missed call.
   Future<void> loadEarnings() async {
@@ -326,6 +305,9 @@ class DashboardController extends ChangeNotifier {
       final data = await consultationService.earnings(token);
       stats = DashboardStats.fromJson(Map<String, dynamic>.from(data['today'] as Map? ?? const {}));
       financials = FinancialSummary(pendingPayout: (data['pendingPayouts'] as num?)?.toDouble() ?? 0, completedPayouts: (data['paidOut'] as num?)?.toDouble() ?? 0);
+      final feedback = Map<String, dynamic>.from((await consultationService.feedback(token))['stats'] as Map? ?? const {});
+      ratingAverage = (feedback['receivedAverage'] as num?)?.toDouble();
+      ratingCount = (feedback['receivedCount'] as num?)?.toInt() ?? 0;
       notifyListeners();
     } catch (error) {
       debugPrint('Could not load earnings: $error');
@@ -384,76 +366,5 @@ class DashboardController extends ChangeNotifier {
   void removeRequest(String id) {
     requests.removeWhere((r) => r.id == id);
     _afterRequestsChanged();
-  }
-
-  final List<CallLogEntry> callLogs = [
-    CallLogEntry(
-      clientName: 'Suresh Gupta',
-      referenceId: 'VP-CALL-8822',
-      time: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
-      amount: 1125,
-      category: 'Family',
-      duration: const Duration(minutes: 25, seconds: 10),
-    ),
-    CallLogEntry(
-      clientName: 'Noha Sharma',
-      referenceId: 'VP-CALL-6710',
-      time: DateTime.now().subtract(const Duration(days: 4)),
-      amount: 360,
-      category: 'Corporate',
-      duration: const Duration(minutes: 8, seconds: 15),
-    ),
-    CallLogEntry(
-      clientName: 'Vikram Malhotra',
-      referenceId: 'VP-CALL-9541',
-      time: DateTime.now().subtract(const Duration(days: 6)),
-      amount: 810,
-      category: 'Criminal',
-      duration: const Duration(minutes: 18, seconds: 30),
-    ),
-  ];
-
-  void addCallLog(CallLogEntry entry) {
-    callLogs.insert(0, entry);
-    notifyListeners();
-  }
-
-  ConsultationRequest addDemoRequest() {
-    final demo = ConsultationRequest(
-      id: 'req-${DateTime.now().millisecondsSinceEpoch}',
-      clientName: 'Aniket',
-      initials: 'A',
-      lastSeen: 'Just now',
-      problemSummary:
-          'Ancestral property partition deed is being challenged by siblings. Need a quick review of share and registration dates.',
-      type: ConsultationType.chat,
-      pricePerMinute: 40,
-      maxMinutes: 32,
-      category: 'Property Law',
-      documentsAttached: 1,
-      documentName: 'partition_deed.pdf',
-      expiresInSeconds: 10,
-    );
-    requests.insert(0, demo);
-    notifyListeners();
-    return demo;
-  }
-
-  ConsultationRequest addDemoVoiceRequest() {
-    final demo = ConsultationRequest(
-      id: 'req-${DateTime.now().millisecondsSinceEpoch}',
-      clientName: 'Ramesh Kumar',
-      initials: 'RK',
-      lastSeen: 'Just now',
-      problemSummary: 'Property case — needs urgent advice on a boundary dispute with a neighbour.',
-      type: ConsultationType.voice,
-      pricePerMinute: 45,
-      maxMinutes: 20,
-      category: 'Property Case',
-      expiresInSeconds: 10,
-    );
-    requests.insert(0, demo);
-    notifyListeners();
-    return demo;
   }
 }

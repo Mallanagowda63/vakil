@@ -26,7 +26,6 @@ class _ConsultationSummaryScreenState extends State<ConsultationSummaryScreen> {
   Map<String, dynamic>? _request;
   Map<String, dynamic>? _earning;
   String? _error;
-  String? _summaryText;
   /// Feedback for this consultation: mine (lawyer → client) and theirs (client → me).
   Map<String, dynamic>? _myFeedback;
   Map<String, dynamic>? _theirFeedback;
@@ -121,7 +120,6 @@ class _ConsultationSummaryScreenState extends State<ConsultationSummaryScreen> {
       setState(() {
         _request = Map<String, dynamic>.from(data['request'] as Map);
         _earning = data['earning'] == null ? null : Map<String, dynamic>.from(data['earning'] as Map);
-        _summaryText ??= _buildSummary();
       });
     } on PartnerNetworkException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -134,74 +132,42 @@ class _ConsultationSummaryScreenState extends State<ConsultationSummaryScreen> {
   double _money(String key, [Map<String, dynamic>? from]) => ((from ?? _request)?[key] as num?)?.toDouble() ?? 0;
   int get _durationMinutes => (((_request?['durationSeconds'] as num?) ?? 0) / 60).ceil();
 
-  String _buildSummary() {
-    final issue = _request?['description']?.toString().trim() ?? '';
-    final category = _request?['category']?.toString() ?? 'a legal matter';
-    return 'This summary was created automatically from the consultation and should be reviewed before use. '
-        '${issue.isEmpty ? 'Client $_clientName consulted you about $category.' : 'Client $_clientName asked about "$issue" ($category).'} '
-        'The session lasted $_durationMinutes min and ${_disconnected ? "ended when the client's ${_endReason == 'balance_over' ? 'balance' : 'time'} ran out" : 'was ended normally'}.';
-  }
-
-  Future<void> _editSummary() async {
-    final ctrl = TextEditingController(text: _summaryText);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Review & edit summary'),
-        content: TextField(
-          controller: ctrl,
-          maxLines: 6,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, ctrl.text.trim()), child: const Text('Save')),
-        ],
-      ),
-    );
-    if (result != null && result.isNotEmpty) setState(() => _summaryText = result);
-  }
-
-  Future<void> _runFollowUpAction(String label) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => const AlertDialog(
-        content: Row(
-          children: [
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4)),
-            SizedBox(width: 16),
-            Text('Working on it…'),
-          ],
-        ),
-      ),
-    );
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$label — done')));
-  }
-
   Future<void> _reportUser() async {
-    final confirmed = await showDialog<bool>(
+    const reasons = ['Abusive or rude', 'Spam or fake request', 'Asked for contact details', 'Technical problem', 'Other'];
+    String? reason;
+    final details = TextEditingController();
+    final send = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Report user?'),
-        content: const Text('If this consultation involved technical issues, abusive conduct, or spam, report it for review.'),
+      builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, setDialog) => AlertDialog(
+        title: Text('Report $_clientName'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('The Vakil team reviews every report. The client is not told who reported them.', style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final r in reasons) ChoiceChip(label: Text(r), selected: reason == r, onSelected: (_) => setDialog(() => reason = r)),
+            ]),
+            const SizedBox(height: 12),
+            TextField(controller: details, maxLines: 3, maxLength: 500, decoration: const InputDecoration(hintText: 'What happened? (optional)', border: OutlineInputBorder())),
+          ]),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: reason == null ? null : () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Report'),
+            child: const Text('Send report'),
           ),
         ],
-      ),
+      )),
     );
-    if (confirmed == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User reported. Our team will review this session.')),
-      );
+    final token = PartnerAuthService.instance.token;
+    if (send != true || reason == null || token == null || !mounted) return;
+    try {
+      final res = await PartnerConsultationService().report(widget.requestId, token, reason: reason!, details: details.text.trim());
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Report sent (${res['ticket']}). Our team will look into it.')));
+    } on PartnerNetworkException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -209,6 +175,34 @@ class _ConsultationSummaryScreenState extends State<ConsultationSummaryScreen> {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const DashboardScreen()),
       (route) => false,
+    );
+  }
+
+  /// What the client asked, the practice area, how long it ran and how it ended.
+  Widget _sessionCard() {
+    final issue = _request?['description']?.toString().trim() ?? '';
+    final category = _request?['category']?.toString() ?? '';
+    final ended = _disconnected ? "Client's ${_endReason == 'balance_over' ? 'balance' : 'time'} ran out" : _request?['endedBy'] == 'lawyer' ? 'Ended by you' : _request?['endedBy'] == 'user' ? 'Ended by the client' : 'Completed';
+    Widget row(IconData icon, String label, String value) => Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(icon, size: 16, color: AppColors.textSecondary),
+            const SizedBox(width: 10),
+            SizedBox(width: 82, child: Text(label, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary))),
+            Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.35))),
+          ]),
+        );
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        row(Icons.person_outline, 'Client', _clientName),
+        if (category.isNotEmpty) row(Icons.balance, 'Area', category),
+        if (issue.isNotEmpty) row(Icons.chat_bubble_outline, 'Question', issue),
+        row(Icons.timer_outlined, 'Duration', '$_durationMinutes min'),
+        row(Icons.flag_outlined, 'Ended', ended),
+      ]),
     );
   }
 
@@ -331,45 +325,11 @@ class _ConsultationSummaryScreenState extends State<ConsultationSummaryScreen> {
                 ),
               ],
               const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.description_outlined, size: 16, color: AppColors.primary),
-                        SizedBox(width: 8),
-                        Text('Auto-generated Summary', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(_summaryText ?? '', style: const TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.textSecondary)),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _editSummary,
-                      child: const Text(
-                        'Review & Edit Summary',
-                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 12.5),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _sessionCard(),
               const SizedBox(height: 22),
               _feedbackSection(),
               const SizedBox(height: 22),
-              const Text('FOLLOW-UP ACTIONS', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5, letterSpacing: 0.4)),
-              const SizedBox(height: 10),
-              _followUpRow(Icons.description_outlined, 'Send Written Opinion'),
-              _followUpRow(Icons.shield_outlined, 'Invite Client to Retainer'),
-              const SizedBox(height: 18),
+              const SizedBox(height: 22),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
@@ -402,30 +362,6 @@ class _ConsultationSummaryScreenState extends State<ConsultationSummaryScreen> {
               PrimaryButton(label: 'Go to Dashboard', onPressed: _goToDashboard),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _followUpRow(IconData icon, String label) {
-    return InkWell(
-      onTap: () => _runFollowUpAction(label),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: AppColors.primary),
-            const SizedBox(width: 12),
-            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5))),
-            const Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
-          ],
         ),
       ),
     );

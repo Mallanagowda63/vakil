@@ -20,6 +20,7 @@ import { feedbackRouter } from './routes/feedback.js';
 import { aiRouter } from './routes/ai.js';
 import { initRealtime, turnOffAwayLawyers } from './realtime.js';
 import { endTimedOutChats, expirePending } from './services/consultations.js';
+import { deleteExpiredAttachments } from './services/attachments.js';
 import { missUnansweredCalls } from './services/calls.js';
 import { billOngoingChats } from './services/billing.js';
 
@@ -39,10 +40,12 @@ Layer.prototype.handle_request = function handle(req, res, next) {
 
 const app = express();
 app.use(cors({ origin: '*' }));
-// Photo and document uploads bring their own, larger body limit (routes/profile.js, routes/platform.js).
+// Photo, document and chat-file uploads bring their own, larger body limit
+// (routes/profile.js, routes/platform.js, routes/consultations.js).
 const jsonBody = express.json();
 const largeBodies = ['/api/profile/photo', '/api/lawyers/me/documents'];
-app.use((req, res, next) => largeBodies.includes(req.path) ? next() : jsonBody(req, res, next));
+const isLargeBody = (path) => largeBodies.includes(path) || /^\/api\/consultations\/[^/]+\/attachments$/.test(path);
+app.use((req, res, next) => isLargeBody(req.path) ? next() : jsonBody(req, res, next));
 app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', fallthrough: false }));
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
@@ -95,5 +98,6 @@ connectDb()
     setInterval(() => missUnansweredCalls().catch(console.error), 1000).unref();
     setInterval(() => billOngoingChats().catch(console.error), 1000).unref();
     setInterval(() => turnOffAwayLawyers().catch(console.error), 60000).unref();
+    setInterval(() => deleteExpiredAttachments().catch(console.error), 30000).unref();
   })
   .catch((err) => console.error('Failed to connect to MongoDB:', err.stack || err.message));

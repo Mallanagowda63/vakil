@@ -229,7 +229,7 @@ class _DashboardHomeTab extends StatelessWidget {
                   const Divider(height: 24),
                   _financialRow(
                     'Rating & Reputation',
-                    '★ ${LawyerProfile.rating} (${LawyerProfile.ratingCount})',
+                    controller.ratingAverage == null ? 'No ratings yet' : '★ ${controller.ratingAverage!.toStringAsFixed(1)} (${controller.ratingCount})',
                   ),
                 ],
               ),

@@ -26,6 +26,8 @@ class PartnerConsultationService {
       _post('/api/lawyers/me/documents', token, {'kind': kind, 'file': base64File, 'contentType': contentType, 'fileName': fileName});
   /// What the lawyer earned (client payments minus commission): today's numbers, balance, recent entries.
   Future<Map<String, dynamic>> earnings(String token) => _get('/api/lawyers/me/earnings', token);
+  /// Saves where payouts go: { upi } or { holderName, ifsc, accountNumber }. Returns the masked details.
+  Future<Map<String, dynamic>> savePayoutDetails(String token, Map<String, String> details) async => Map<String, dynamic>.from((await _patch('/api/lawyers/me/payout-details', token, details))['payoutDetails'] as Map);
   /// Queues the available balance as a payout; the response is the updated summary plus `payout`.
   Future<Map<String, dynamic>> requestPayout(String token) => _post('/api/lawyers/me/payouts', token);
 
@@ -38,6 +40,11 @@ class PartnerConsultationService {
 
   /// Feedback after a chat or call: the lawyer rates the client.
   Future<Map<String, dynamic>> review(String id, String token, int rating, String comment) => _post('/api/consultations/$id/review', token, {'rating': rating, 'comment': comment});
+  /// A help request to the Vakil team; returns the ticket number.
+  Future<String> contactSupport(String token, {required String topic, required String message}) async =>
+      (await _post('/api/support', token, {'topic': topic, 'message': message}))['ticket'].toString();
+  /// Reports the client after a consultation; it reaches the Admin Panel's Complaints.
+  Future<Map<String, dynamic>> report(String id, String token, {required String reason, String details = ''}) => _post('/api/consultations/$id/report', token, {'reason': reason, 'details': details});
   /// Both sides' feedback for one consultation: { mine, theirs }.
   Future<Map<String, dynamic>> feedbackFor(String id, String token) => _get('/api/feedback/consultation/$id', token);
   /// All feedback: { given, received, stats }.

@@ -32,7 +32,7 @@ class RealtimeService with WidgetsBindingObserver {
 
   static const _serverEvents = [
     'request_accepted', 'request_rejected', 'request_expired', 'request_cancelled', 'request_completed', 'status_updated',
-    'new_message', 'message_delivered', 'message_read', 'typing_start', 'typing_stop', 'user_online', 'user_offline', 'lawyer_presence', 'lawyer_status_changed', 'chat_ended',
+    'new_message', 'message_delivered', 'message_read', 'typing_start', 'typing_stop', 'user_online', 'user_offline', 'lawyer_presence', 'lawyer_status_changed', 'chat_ended', 'attachments_deleted',
     'incoming_call', 'call_ringing', 'call_answered', 'call_rejected', 'call_ended', 'call_missed',
     'wallet_updated', 'chat_billing', 'low_balance', 'chat_extended',
     'incoming_call', 'call_answered', 'call_rejected', 'call_ended', 'call_missed',

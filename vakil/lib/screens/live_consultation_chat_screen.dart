@@ -10,6 +10,7 @@ import '../state/free_trial_state.dart';
 import '../state/wallet_state.dart';
 import '../utils/currency.dart';
 import '../widgets/add_time_sheet.dart';
+import '../widgets/chat_attachments.dart';
 import '../widgets/wallet_widgets.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -234,6 +235,8 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
       case 'low_balance':
         // The banner shows while the balance is below one minute (see build).
         setState(() {});
+      case 'attachments_deleted':
+        setState(() { for (var i = 0; i < _messages.length; i++) { if (_messages[i].attachment != null) _messages[i] = _messages[i].withAttachmentDeleted(); } });
       case 'chat_ended' || 'request_completed':
         setState(() {
           _status = 'COMPLETED'; _endsAt = null;
@@ -275,6 +278,15 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
     _input.clear();
     _stopTyping();
     _realtime.send(_id, text);
+    _scrollToBottom();
+  }
+
+  Future<void> _attach() async {
+    final token = AuthService.instance.token;
+    if (token == null || _ended) return;
+    final message = await pickAndSendAttachment(context, requestId: _id, token: token);
+    if (message == null || !mounted) return;
+    setState(() => _insert(message));
     _scrollToBottom();
   }
 
@@ -415,8 +427,9 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
 
   Widget _inputBar() => Container(
         color: Colors.white,
-        padding: const EdgeInsets.fromLTRB(12, 8, 8, 10),
+        padding: const EdgeInsets.fromLTRB(4, 8, 8, 10),
         child: Row(children: [
+          IconButton(tooltip: 'Send a photo or file', onPressed: _attach, icon: const Icon(Icons.attach_file_rounded, color: AppColors.textGray)),
           Expanded(child: TextField(
             controller: _input,
             minLines: 1,
@@ -436,6 +449,10 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(_isTrial ? 'Your free trial has ended' : _timed ? (_isCall ? 'Call time is over' : 'Chat time is over') : (_isCall ? 'Consultation ended' : 'Chat ended'), style: AppText.bodyMedium(AppColors.textDark)),
+          if (_messages.any((m) => m.hasLiveAttachment)) Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('Shared files are deleted 5 minutes after the chat ends. Save anything you need now.', textAlign: TextAlign.center, style: AppText.caption(AppColors.amber).copyWith(fontWeight: FontWeight.w600)),
+          ),
           if (_rating == null) TextButton(onPressed: _openRating, child: Text('Rate $name')),
         ]),
       );
@@ -579,13 +596,16 @@ class _CallEntry extends StatelessWidget {
 /// Right = me, left = lawyer. Ticks: clock = waiting to send, ✓ sent,
 /// ✓✓ delivered, blue ✓✓ read, red ! failed (tap to retry).
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.text, required this.time, required this.mine, this.status, this.error, this.onRetry});
-  factory _Bubble.fromMessage(ChatMessage m) => _Bubble(text: m.text, time: m.createdAt, mine: m.senderRole == 'user', status: m.status);
+  const _Bubble({required this.text, required this.time, required this.mine, this.content, this.status, this.error, this.onRetry});
+  factory _Bubble.fromMessage(ChatMessage m) => _Bubble(text: m.text, time: m.createdAt, mine: m.senderRole == 'user', status: m.status,
+      content: m.attachment == null ? null : AttachmentView(message: m, token: AuthService.instance.token, mine: m.senderRole == 'user'));
   factory _Bubble.fromPending(PendingMessage p, {VoidCallback? onRetry}) => _Bubble(text: p.text, time: p.createdAt, mine: true, status: p.failed ? MessageStatus.failed : MessageStatus.pending, error: p.error, onRetry: onRetry);
 
   final String text;
   final DateTime time;
   final bool mine;
+  /// A photo or file shown instead of the text.
+  final Widget? content;
   final MessageStatus? status;
   final String? error;
   final VoidCallback? onRetry;
@@ -603,11 +623,11 @@ class _Bubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final bubble = Container(
       margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.fromLTRB(12, 8, 10, 6),
+      padding: content == null ? const EdgeInsets.fromLTRB(12, 8, 10, 6) : const EdgeInsets.fromLTRB(5, 5, 8, 5),
       constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .78),
       decoration: BoxDecoration(color: mine ? const Color(0xFF171722) : Colors.white, borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16), bottomLeft: Radius.circular(mine ? 16 : 4), bottomRight: Radius.circular(mine ? 4 : 16))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
-        Align(alignment: Alignment.centerLeft, widthFactor: 1, child: Text(text, style: TextStyle(color: mine ? Colors.white : Colors.black87, fontSize: 15))),
+        content ?? Align(alignment: Alignment.centerLeft, widthFactor: 1, child: Text(text, style: TextStyle(color: mine ? Colors.white : Colors.black87, fontSize: 15))),
         const SizedBox(height: 2),
         Row(mainAxisSize: MainAxisSize.min, children: [
           Text(clockTime(time), style: TextStyle(fontSize: 11, color: mine ? Colors.white60 : Colors.black45)),
