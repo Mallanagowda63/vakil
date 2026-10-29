@@ -8,6 +8,7 @@ import '../config/api_config.dart';
 import '../screens/login_otp_screen.dart';
 import 'account_gone.dart';
 import 'app_keys.dart';
+import 'online_bubble.dart';
 import 'realtime_service.dart';
 
 class PartnerNetworkException implements Exception {
@@ -83,6 +84,7 @@ class PartnerAuthService {
   }
 
   Future<void> logout() async {
+    OnlineBubble.instance.signedOut();
     token = null;
     email = null;
     RealtimeService.instance.disconnect();

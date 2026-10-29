@@ -9,6 +9,7 @@ import '../services/push_service.dart';
 import '../services/registration_sync.dart';
 import '../services/realtime_service.dart';
 import '../services/consultation_service.dart';
+import '../services/online_bubble.dart';
 
 enum ConsultationType { chat, voice }
 
@@ -325,6 +326,7 @@ class DashboardController extends ChangeNotifier {
       final data = await consultationService.getAvailability(token);
       availableForChat = data['isChatOnline'] == true;
       availableForCall = data['isCallOnline'] == true;
+      OnlineBubble.instance.setOnline(onlineStatus);
       final channels = Map<String, dynamic>.from(data['channels'] as Map? ?? const {});
       chatAllowed = channels['chat'] != false;
       callAllowed = channels['call'] != false;
@@ -344,15 +346,18 @@ class DashboardController extends ChangeNotifier {
     final chatBefore = availableForChat; final callBefore = availableForCall;
     availableForChat = chat;
     availableForCall = call;
+    OnlineBubble.instance.setOnline(onlineStatus);
     notifyListeners();
     if (_token == null) return;
     try {
       final saved = await consultationService.setAvailability(_token!, chat: chat, call: call);
       availableForChat = saved['isChatOnline'] == true;
       availableForCall = saved['isCallOnline'] == true;
+      OnlineBubble.instance.setOnline(onlineStatus);
       notifyListeners();
     } catch (error) {
       availableForChat = chatBefore; availableForCall = callBefore;
+      OnlineBubble.instance.setOnline(onlineStatus);
       notifyListeners();
       messengerKey.currentState?.showSnackBar(const SnackBar(content: Text('Could not change your availability. Please try again.')));
     }

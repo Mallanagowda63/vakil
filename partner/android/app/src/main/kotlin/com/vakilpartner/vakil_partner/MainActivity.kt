@@ -24,5 +24,15 @@ class MainActivity : FlutterActivity() {
             }
             result.success(null)
         }
+        // The online bubble over other apps (see OnlineBubble.kt).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vakil/online_bubble").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "canDraw" -> result.success(OnlineBubble.canDraw(this))
+                "openSettings" -> { OnlineBubble.openPermissionSettings(this); result.success(null) }
+                "show" -> result.success(OnlineBubble.show(this))
+                "hide" -> { OnlineBubble.hide(this); result.success(null) }
+                else -> result.notImplemented()
+            }
+        }
     }
 }
