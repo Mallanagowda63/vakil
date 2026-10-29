@@ -7,6 +7,7 @@ import '../theme/app_text_styles.dart';
 import '../widgets/wallet_widgets.dart';
 import 'lawyer_profile_screen.dart';
 import 'lawyers_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// Legal Saathi (AI): the client describes their problem and gets the right
 /// Vakil lawyers for it, ranked on practice area, client ratings and reviews,
@@ -182,7 +183,7 @@ class _SaathiBubble extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16), bottomLeft: Radius.circular(4), bottomRight: Radius.circular(16))),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (typing) ...[const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.aiCardEnd)), const SizedBox(width: 10)],
+            if (typing) ...[const DotsLoader(size: 6, color: AppColors.aiCardEnd), const SizedBox(width: 10)],
             Flexible(child: Text(text, style: TextStyle(fontSize: 15, height: 1.35, color: typing ? AppColors.textGray : Colors.black87))),
           ]),
         ),

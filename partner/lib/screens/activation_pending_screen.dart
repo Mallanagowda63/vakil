@@ -9,6 +9,7 @@ import 'dashboard_screen.dart';
 import 'customer_support_screen.dart';
 import 'login_otp_screen.dart';
 import 'personal_details_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// The lawyer's verification state from the server: approved, under_review,
 /// rejected (with a reason), not_submitted or suspended.
@@ -51,7 +52,7 @@ class _PartnerHomeState extends State<PartnerHome> {
   }
 
   @override
-  Widget build(BuildContext context) => const Scaffold(body: Center(child: CircularProgressIndicator()));
+  Widget build(BuildContext context) => const Scaffold(body: PageLoader());
 }
 
 class ActivationPendingScreen extends StatefulWidget {

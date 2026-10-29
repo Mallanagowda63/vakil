@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/chat_format.dart';
 import 'lawyers_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// Feedback after chats and calls: what lawyers said about me, and the
 /// ratings I gave them.
@@ -52,7 +53,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         body: _error != null
             ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!, style: AppText.body(AppColors.textGray)), TextButton(onPressed: _load, child: const Text('Try again'))]))
             : data == null
-                ? const Center(child: CircularProgressIndicator())
+                ? const PageLoader()
                 : TabBarView(children: [
                     _FeedbackList(items: data.received, empty: 'No feedback from lawyers yet.\nIt appears here after a lawyer rates a chat or call with you.', onRefresh: _load),
                     _FeedbackList(items: data.given, empty: "You haven't rated a lawyer yet.\nYou can rate each chat or call when it ends.", onRefresh: _load),

@@ -11,6 +11,7 @@ import '../widgets/primary_button.dart';
 import '../widgets/step_progress_header.dart';
 import '../widgets/upload_dropzone.dart';
 import 'bank_upi_screen.dart';
+import '../widgets/app_loader.dart';
 
 class AdvocateVerificationScreen extends StatefulWidget {
   const AdvocateVerificationScreen({super.key});
@@ -76,7 +77,7 @@ class _AdvocateVerificationScreenState extends State<AdvocateVerificationScreen>
     return Padding(
       padding: const EdgeInsets.only(right: 4),
       child: _sendingCode
-          ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+          ? const Padding(padding: EdgeInsets.all(12), child: DotsLoader(size: 6))
           : TextButton(onPressed: _verifyBarNumber, child: const Text('Verify', style: TextStyle(fontWeight: FontWeight.w700))),
     );
   }

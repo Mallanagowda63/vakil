@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { initPush } from './push.js';
+import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
 import http from 'node:http';
@@ -40,6 +41,8 @@ Layer.prototype.handle_request = function handle(req, res, next) {
 
 const app = express();
 app.use(cors({ origin: '*' }));
+// Gzip JSON replies (lawyer lists, chats): much less to download on mobile data.
+app.use(compression());
 // Photo, document and chat-file uploads bring their own, larger body limit
 // (routes/profile.js, routes/platform.js, routes/consultations.js).
 const jsonBody = express.json();

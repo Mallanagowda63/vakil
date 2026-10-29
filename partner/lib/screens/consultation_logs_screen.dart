@@ -5,6 +5,7 @@ import '../services/consultation_service.dart';
 import '../services/partner_auth_service.dart';
 import '../theme/app_theme.dart';
 import 'consultation_summary_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// Every finished consultation, newest first (GET /api/chats). Tap one for its
 /// details, earnings and feedback.
@@ -56,7 +57,7 @@ class _ConsultationLogsScreenState extends State<ConsultationLogsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Consultation Logs')),
       body: logs == null
-          ? Center(child: _error == null ? const CircularProgressIndicator() : Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: _load, child: const Text('Try again'))]))
+          ? (_error == null ? const PageLoader() : Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: _load, child: const Text('Try again'))])))
           : logs.isEmpty
               ? const Center(child: Text('Finished consultations will show here.', style: TextStyle(color: AppColors.textSecondary)))
               : RefreshIndicator(

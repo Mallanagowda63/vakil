@@ -9,6 +9,7 @@ import '../theme/app_text_styles.dart';
 import '../utils/chat_format.dart';
 import '../widgets/wallet_widgets.dart';
 import 'lawyers_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// A lawyer from the server: name, photo, practice areas, availability and
 /// price ("FREE 1 min trial" until the user's trial is used, then ₹X/min).
@@ -153,7 +154,7 @@ class _LawyerProfileScreenState extends State<LawyerProfileScreen> {
                     Text('Client Reviews${count > 0 ? ' ($count)' : ''}', style: AppText.h3(AppColors.textDark)),
                     const SizedBox(height: 10),
                     if (reviews == null)
-                      const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
+                      const Padding(padding: EdgeInsets.all(12), child: Center(child: DotsLoader()))
                     else if (reviews.items.isEmpty)
                       Text('No reviews yet.', style: AppText.bodySmall(AppColors.textGray))
                     else

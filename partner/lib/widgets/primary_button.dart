@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'app_loader.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String label;
@@ -20,11 +21,7 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final child = loading
-        ? const SizedBox(
-            height: 22,
-            width: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
-          )
+        ? const DotsLoader(size: 7, color: Colors.white)
         : Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

@@ -13,6 +13,7 @@ import '../widgets/wallet_widgets.dart';
 import 'lawyers_screen.dart';
 import 'live_consultation_chat_screen.dart';
 import 'wallet_screen.dart';
+import '../widgets/app_loader.dart';
 
 enum _Phase { form, waiting, declined }
 
@@ -232,7 +233,7 @@ class _State extends State<RequestConsultationScreen> {
         const SizedBox(height: 8),
         Text('${_secondsLeft}s', style: AppText.body(AppColors.textGray)),
         const SizedBox(height: 20),
-        const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3)),
+        const DotsLoader(size: 9),
         if (_request?['isTrial'] == true) ...[const SizedBox(height: 24), _trialBanner()],
         const Spacer(),
         OutlinedButton(onPressed: _busy ? null : _cancel, style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)), child: const Text('Cancel')),

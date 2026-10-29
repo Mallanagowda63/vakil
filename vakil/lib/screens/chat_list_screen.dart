@@ -9,6 +9,7 @@ import '../theme/app_text_styles.dart';
 import '../utils/chat_format.dart';
 import 'lawyers_screen.dart';
 import 'live_consultation_chat_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// All chats: ongoing first, then by latest activity, with the last message,
 /// its time and an unread badge. Refreshes on chat events and on resume.
@@ -75,7 +76,7 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
         child: _error != null && chats == null
             ? ListView(children: [const SizedBox(height: 120), Center(child: Text(_error!, style: AppText.body(AppColors.textGray))), Center(child: TextButton(onPressed: _load, child: const Text('Try again')))])
             : chats == null
-                ? const Center(child: CircularProgressIndicator())
+                ? const PageLoader()
                 : chats.isEmpty
                     ? ListView(children: [const SizedBox(height: 120), Center(child: Text('No chats yet.\nFind a lawyer to start one.', textAlign: TextAlign.center, style: AppText.body(AppColors.textGray)))])
                     : ListView.separated(

@@ -27,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _bootstrap() async {
-    final minDelay = Future.delayed(const Duration(milliseconds: 1400));
+    final minDelay = Future.delayed(const Duration(milliseconds: 700));
     await Future.wait([AuthService.instance.init(), minDelay]);
     _goNext();
   }

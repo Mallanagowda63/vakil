@@ -12,6 +12,7 @@ import '../widgets/wallet_widgets.dart';
 import 'lawyer_profile_screen.dart';
 import 'lawyer_search_screen.dart';
 import 'request_consultation_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// Lawyers from the server with name, photo, category, online status and a Chat button.
 class LawyersScreen extends StatefulWidget {
@@ -28,7 +29,7 @@ class _LawyersScreenState extends State<LawyersScreen> with WidgetsBindingObserv
   final _service = ConsultationService();
   StreamSubscription<SocketEvent>? _events;
   Timer? _debounce;
-  List<LawyerSummary>? _lawyers;
+  late List<LawyerSummary>? _lawyers = ConsultationService.lastLawyers == null ? null : sortLawyers(ConsultationService.lastLawyers!).where((l) => l.id != widget.excludeLawyerId).toList();
   String? _error;
   final _scroll = ScrollController();
 
@@ -122,7 +123,7 @@ class _LawyersScreenState extends State<LawyersScreen> with WidgetsBindingObserv
         child: _error != null
             ? ListView(children: [const SizedBox(height: 120), Center(child: Text(_error!, style: AppText.body(AppColors.textGray))), Center(child: TextButton(onPressed: _load, child: const Text('Try again')))])
             : lawyers == null
-                ? const Center(child: CircularProgressIndicator())
+                ? const PageLoader()
                 : lawyers.isEmpty
                     ? ListView(children: [
                         const SizedBox(height: 120),

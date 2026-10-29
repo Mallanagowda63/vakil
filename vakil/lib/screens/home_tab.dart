@@ -14,6 +14,7 @@ import 'lawyer_profile_screen.dart';
 import 'lawyer_search_screen.dart';
 import 'legal_help_start_screen.dart';
 import 'legal_saathi_screen.dart';
+import '../widgets/app_loader.dart';
 
 // Colours of the home design (Legally Talk).
 const _pageTop = Color(0xFFE8EFFD);
@@ -635,7 +636,7 @@ class _FeaturedLawyersState extends State<_FeaturedLawyers> {
   final _scroll = ScrollController();
   StreamSubscription<SocketEvent>? _events;
   Timer? _debounce;
-  List<LawyerSummary>? _lawyers;
+  List<LawyerSummary>? _lawyers = ConsultationService.lastLawyers == null ? null : sortLawyers(ConsultationService.lastLawyers!).take(8).toList();
   int _page = 0;
 
   @override
@@ -677,7 +678,7 @@ class _FeaturedLawyersState extends State<_FeaturedLawyers> {
   @override
   Widget build(BuildContext context) {
     final lawyers = _lawyers;
-    if (lawyers == null) return const SizedBox(height: 170, child: Center(child: CircularProgressIndicator()));
+    if (lawyers == null) return const SizedBox(height: 170, child: PageLoader(compact: true));
     if (lawyers.isEmpty) return SizedBox(height: 60, child: Center(child: Text('No lawyers available right now.', style: AppText.bodySmall(AppColors.textGray))));
     final active = _page.clamp(0, lawyers.length - 1);
     return Column(

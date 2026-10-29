@@ -7,6 +7,7 @@ import '../services/partner_auth_service.dart';
 import '../theme/app_theme.dart';
 import 'feedback_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// The lawyer's registration details and photo, saved on the server. The
 /// name and photo are what clients see; Bar Council number, date of birth
@@ -131,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onForegroundImageError: avatar == null ? null : (_, __) {},
                             child: Text(profile.initials, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 20)),
                           ),
-                          if (_uploading) const Positioned.fill(child: CircularProgressIndicator()),
+                          if (_uploading) const Positioned.fill(child: Center(child: DotsLoader(size: 7))),
                           Positioned(
                             right: 0,
                             bottom: 0,

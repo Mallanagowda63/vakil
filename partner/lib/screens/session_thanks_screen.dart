@@ -5,6 +5,7 @@ import '../services/partner_auth_service.dart';
 import '../theme/app_theme.dart';
 import 'consultation_summary_screen.dart';
 import 'dashboard_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// The first thing a lawyer sees when a chat ends: a thank-you with what this
 /// chat earned and how today is going, so finishing a consultation feels good.
@@ -264,7 +265,7 @@ class _EarnedCard extends StatelessWidget {
         Text(freeTrial ? 'FREE TRIAL CHAT' : 'YOU EARNED', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11.5, fontWeight: FontWeight.w700, letterSpacing: 1)),
         const SizedBox(height: 6),
         if (earned == null)
-          const SizedBox(height: 44, child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))))
+          const SizedBox(height: 44, child: Center(child: DotsLoader(color: Colors.white)))
         else if (freeTrial)
           const Text('First impression made', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800))
         else

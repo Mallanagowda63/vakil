@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/primary_button.dart';
 import 'dashboard_screen.dart';
 import 'feedback_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// Shown to the lawyer when a consultation ends: what the client paid, how
 /// long it ran, the rate and what the lawyer earned after commission — all
@@ -213,7 +214,7 @@ class _ConsultationSummaryScreenState extends State<ConsultationSummaryScreen> {
         body: SafeArea(
           child: Center(
             child: _error == null
-                ? const CircularProgressIndicator()
+                ? const PageLoader()
                 : Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: _load, child: const Text('Try again'))]),
           ),
         ),

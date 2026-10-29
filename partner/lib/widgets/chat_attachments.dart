@@ -9,6 +9,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import '../config/api_config.dart';
 import '../models/chat_models.dart';
+import 'app_loader.dart';
 
 // Photos and files in a chat, shared by the User App and the Partner App
 // (keep both copies of this file identical). The server keeps the bytes; only
@@ -76,7 +77,7 @@ Future<ChatMessage?> pickAndSendAttachment(BuildContext context, {required Strin
   if (bytes.length > _maxBytes) { say('That file is too big. The limit is 10 MB.'); return null; }
 
   final sending = messenger.showSnackBar(SnackBar(duration: const Duration(minutes: 2), content: Row(children: [
-    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+    const DotsLoader(size: 6, color: Colors.white),
     const SizedBox(width: 12),
     Expanded(child: Text(contentType.startsWith('image/') ? 'Sending photo…' : 'Sending $name…', overflow: TextOverflow.ellipsis)),
   ])));
@@ -148,7 +149,7 @@ class AttachmentView extends StatelessWidget {
               width: 220,
               height: 220,
               fit: BoxFit.cover,
-              loadingBuilder: (_, child, progress) => progress == null ? child : Container(width: 220, height: 220, color: Colors.black12, alignment: Alignment.center, child: const CircularProgressIndicator(strokeWidth: 2)),
+              loadingBuilder: (_, child, progress) => progress == null ? child : Container(width: 220, height: 220, color: Colors.black12, alignment: Alignment.center, child: const DotsLoader(size: 7)),
               errorBuilder: (context, error, stack) => Container(width: 220, height: 120, color: Colors.black12, alignment: Alignment.center, child: const Icon(Icons.broken_image_outlined, color: Colors.black38)),
             ),
           ),

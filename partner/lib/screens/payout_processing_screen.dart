@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/wallet_data.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primary_button.dart';
+import '../widgets/app_loader.dart';
 
 class PayoutProcessingScreen extends StatelessWidget {
   final WalletTransaction transaction;
@@ -54,7 +55,7 @@ class PayoutProcessingScreen extends StatelessWidget {
                       decoration: const BoxDecoration(color: AppColors.infoBg, shape: BoxShape.circle),
                       child: const Padding(
                         padding: EdgeInsets.all(20),
-                        child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primary),
+                        child: DotsLoader(size: 8, color: AppColors.primary),
                       ),
                     ),
                     const SizedBox(height: 20),

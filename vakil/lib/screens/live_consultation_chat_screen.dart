@@ -17,6 +17,7 @@ import '../theme/app_text_styles.dart';
 import '../utils/chat_format.dart';
 import 'lawyers_screen.dart';
 import 'rate_lawyer_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// One chat with a lawyer. Messages go through RealtimeService (queued while
 /// offline); the REST API reloads the truth on open, reconnect and resume.
@@ -110,8 +111,10 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
 
   Future<void> _load() async {
     try {
-      final chat = await _service.chat(_id);
+      // Both at once: one round trip to the server instead of two.
+      final chatLoad = _service.chat(_id);
       final page = await _service.messages(_id);
+      final chat = await chatLoad;
       if (!mounted) return;
       setState(() {
         _applyChat(chat);
@@ -134,9 +137,10 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
   Future<void> _resync() async {
     if (_loading) return;
     try {
-      final chat = await _service.chat(_id);
       final last = _messages.isEmpty ? null : _messages.last.id;
+      final chatLoad = _service.chat(_id);
       final missed = last == null ? await _service.messages(_id) : await _service.messages(_id, after: last);
+      final chat = await chatLoad;
       if (!mounted) return;
       setState(() { _applyChat(chat); for (final m in missed.items) { _insert(m); } });
       _realtime.emit('join_chat', {'requestId': _id});
@@ -384,7 +388,7 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
           builder: (_, balance, _) => balance >= _rate! ? const SizedBox.shrink() : _LowBalanceBanner(onRecharge: () => openWallet(context)),
         ),
         Expanded(child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const PageLoader()
             : _error != null
                 ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: () { setState(() => _loading = true); _load(); }, child: const Text('Try again'))]))
                 : items.isEmpty
@@ -395,7 +399,7 @@ class _State extends State<LiveConsultationChatScreen> with WidgetsBindingObserv
                         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                         itemCount: items.length + (_loadingOlder ? 1 : 0),
                         itemBuilder: (_, i) {
-                          if (i == items.length) return const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))));
+                          if (i == items.length) return const Padding(padding: EdgeInsets.all(12), child: Center(child: DotsLoader(size: 6)));
                           final item = items[i];
                           final time = item is ChatMessage ? item.createdAt : (item as PendingMessage).createdAt;
                           final older = i + 1 < items.length ? items[i + 1] : null;

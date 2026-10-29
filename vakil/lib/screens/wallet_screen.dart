@@ -6,6 +6,7 @@ import '../state/wallet_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/currency.dart';
+import '../widgets/app_loader.dart';
 
 /// Wallet: current balance, recharge (preset amounts or a custom amount,
 /// paid through Cashfree), and the transaction history.
@@ -131,7 +132,7 @@ class _WalletScreenState extends State<WalletScreen> {
               onPressed: _paying || unavailable || _amount == null ? null : _recharge,
               style: FilledButton.styleFrom(backgroundColor: AppColors.blueAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               child: _paying
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                  ? const DotsLoader(size: 7, color: Colors.white)
                   : Text(_amount == null ? 'Recharge' : 'Recharge ${formatCurrency(_amount!)}', style: AppText.button(Colors.white)),
             ),
           ),
@@ -140,7 +141,7 @@ class _WalletScreenState extends State<WalletScreen> {
           const SizedBox(height: 26),
           Text('Transaction history', style: AppText.h3(AppColors.textDark)),
           const SizedBox(height: 6),
-          if (!_wallet.loaded) const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+          if (!_wallet.loaded) const Padding(padding: EdgeInsets.all(24), child: PageLoader(compact: true))
           else if (_wallet.transactions.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Center(child: Text('No transactions yet.', style: AppText.body(AppColors.textGray))))
           else ..._wallet.transactions.map((t) => _TransactionRow(t)),
         ]),

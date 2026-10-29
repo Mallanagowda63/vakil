@@ -3,6 +3,7 @@ import '../services/consultation_service.dart';
 import '../services/partner_auth_service.dart';
 import '../theme/app_theme.dart';
 import 'active_consultation_chat_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// Feedback after chats and calls: clients' ratings of me (my public rating)
 /// and the feedback I gave clients.
@@ -51,7 +52,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         body: _error != null
             ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: _load, child: const Text('Try again'))]))
             : _data == null
-                ? const Center(child: CircularProgressIndicator())
+                ? const PageLoader()
                 : TabBarView(children: [
                     _FeedbackList(
                       items: received,

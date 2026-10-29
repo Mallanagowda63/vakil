@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/step_progress_header.dart';
 import 'advocate_verification_screen.dart';
+import '../widgets/app_loader.dart';
 
 class FaceVerificationScreen extends StatefulWidget {
   const FaceVerificationScreen({super.key});
@@ -95,11 +96,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
                           ),
                         ),
                         if (verifying)
-                          const SizedBox(
-                            width: 190,
-                            height: 190,
-                            child: CircularProgressIndicator(strokeWidth: 3),
-                          ),
+                          const SizedBox(width: 190, height: 190, child: Center(child: DotsLoader())),
                         if (verified)
                           Positioned(
                             bottom: 6,

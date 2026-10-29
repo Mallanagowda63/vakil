@@ -24,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     )..forward();
     _scale = CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
 
-    Future.wait([PartnerAuthService.instance.restore(), Future.delayed(const Duration(milliseconds: 1200))]).then((results) {
+    Future.wait([PartnerAuthService.instance.restore(), Future.delayed(const Duration(milliseconds: 700))]).then((results) {
       if (!mounted) return;
       final signedIn = results.first as bool;
       Navigator.of(context).pushReplacement(

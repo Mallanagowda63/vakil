@@ -8,6 +8,7 @@ import '../state/home_nav.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import 'lawyers_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// Search lawyers by name, practice area, city or language. Results update as
 /// the user types; online lawyers stay on top.
@@ -22,7 +23,7 @@ class _LawyerSearchScreenState extends State<LawyerSearchScreen> {
   late final _query = TextEditingController(text: widget.initialQuery);
   final _service = ConsultationService();
   StreamSubscription<SocketEvent>? _events;
-  List<LawyerSummary>? _lawyers;
+  List<LawyerSummary>? _lawyers = ConsultationService.lastLawyers == null ? null : sortLawyers(ConsultationService.lastLawyers!);
   String? _error;
 
   static const _suggestions = ['Criminal', 'Family', 'Property', 'Corporate', 'Divorce', 'Tax', 'Consumer', 'Employment'];
@@ -87,7 +88,7 @@ class _LawyerSearchScreenState extends State<LawyerSearchScreen> {
       body: _error != null
           ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!, style: AppText.body(AppColors.textGray)), TextButton(onPressed: _load, child: const Text('Try again'))]))
           : results == null
-              ? const Center(child: CircularProgressIndicator())
+              ? const PageLoader()
               : ListView(padding: const EdgeInsets.all(16), children: [
                   if (query.isEmpty) ...[
                     Text('Popular searches', style: AppText.bodyMedium(AppColors.textDark)),

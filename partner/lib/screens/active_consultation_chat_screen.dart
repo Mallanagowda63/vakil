@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../utils/chat_format.dart';
 import '../widgets/chat_attachments.dart';
 import 'session_thanks_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// One chat with a client — the same chat UI as the User App. Messages go
 /// through RealtimeService (queued while offline); the REST API reloads the
@@ -98,8 +99,10 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
     final token = _token;
     if (token == null) return;
     try {
-      final chat = await _service.chat(_id, token);
+      // Both at once: one round trip to the server instead of two.
+      final chatLoad = _service.chat(_id, token);
       final page = await _service.messages(_id, token);
+      final chat = await chatLoad;
       if (!mounted) return;
       setState(() {
         _applyChat(chat);
@@ -122,9 +125,10 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
     final token = _token;
     if (_loading || token == null) return;
     try {
-      final chat = await _service.chat(_id, token);
       final last = _messages.isEmpty ? null : _messages.last.id;
+      final chatLoad = _service.chat(_id, token);
       final missed = last == null ? await _service.messages(_id, token) : await _service.messages(_id, token, after: last);
+      final chat = await chatLoad;
       if (!mounted) return;
       setState(() { _applyChat(chat); for (final m in missed.items) { _insert(m); } });
       _realtime.emit('join_chat', {'requestId': _id});
@@ -333,7 +337,7 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
         ]
         else if (!_ended && _startedAt != null) _ChatClock(seconds: DateTime.now().difference(_startedAt!).inSeconds),
         Expanded(child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const PageLoader()
             : _error != null
                 ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), TextButton(onPressed: () { setState(() => _loading = true); _load(); }, child: const Text('Try again'))]))
                 : items.isEmpty
@@ -344,7 +348,7 @@ class _State extends State<ActiveConsultationChatScreen> with WidgetsBindingObse
                         padding: const EdgeInsets.all(12),
                         itemCount: items.length + (_loadingOlder ? 1 : 0),
                         itemBuilder: (_, i) {
-                          if (i == items.length) return const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))));
+                          if (i == items.length) return const Padding(padding: EdgeInsets.all(12), child: Center(child: DotsLoader(size: 6)));
                           final item = items[i];
                           final time = item is ChatMessage ? item.createdAt : (item as PendingMessage).createdAt;
                           final older = i + 1 < items.length ? items[i + 1] : null;

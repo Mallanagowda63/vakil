@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../screens/login_otp_screen.dart';
+import 'app_keys.dart';
 import '../state/free_trial_state.dart';
 import 'api_client.dart';
 import 'profile_service.dart';
@@ -21,15 +25,31 @@ class AuthService {
   Map<String, dynamic>? profile;
   bool get isLoggedIn => token != null;
 
+  /// Restores the saved session. The app opens with what this phone saved
+  /// last time and waits at most 2.5 s for the server's check; a slow network
+  /// finishes it in the background (and signs out only if the server says so).
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString('auth_token');
       email = prefs.getString('auth_email');
+      profileComplete = prefs.getBool('auth_profile_complete') ?? false;
+      trialUsed = prefs.getBool('auth_trial_used') ?? false;
+      FreeTrialState.used = trialUsed;
     } catch (_) { return; }
     if (token == null) return;
+    final check = _checkSession();
+    // No saved flags yet (first start after an update): wait for the server.
+    if (!profileComplete) { await check; return; }
+    RealtimeService.instance.connect(token!);
+    await check.timeout(const Duration(milliseconds: 2500), onTimeout: () {});
+  }
+
+  Future<void> _checkSession() async {
+    final saved = token;
     try {
-      final res = await _api.get('/api/auth/session', token: token);
+      final res = await _api.get('/api/auth/session', token: saved);
+      if (token != saved) return;
       if (res['token'] is String) {
         token = res['token'] as String;
         final prefs = await SharedPreferences.getInstance();
@@ -39,7 +59,10 @@ class AuthService {
       RealtimeService.instance.connect(token!);
       PushService.instance.registerDevice(token!);
     } on ApiException catch (error) {
-      if (error.statusCode == 401 || error.statusCode == 403) await _clearSession();
+      if (token != saved || (error.statusCode != 401 && error.statusCode != 403)) return;
+      await _clearSession();
+      // Signed out on another check after the app had already opened.
+      navigatorKey.currentState?.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginOtpScreen()), (route) => false);
     }
   }
 
@@ -85,6 +108,8 @@ class AuthService {
       await prefs.remove('auth_token');
       await prefs.remove('auth_email');
       await prefs.remove('auth_phone');
+      await prefs.remove('auth_profile_complete');
+      await prefs.remove('auth_trial_used');
     } catch (_) {}
   }
 
@@ -96,5 +121,7 @@ class AuthService {
     profile = user['profile'] as Map<String, dynamic>?;
     FreeTrialState.used = trialUsed;
     WalletState.balance = (user['walletBalance'] as num?)?.toDouble() ?? 0;
+    // Saved so the next start can open the right screen without waiting for the network.
+    SharedPreferences.getInstance().then((prefs) { prefs.setBool('auth_profile_complete', profileComplete); prefs.setBool('auth_trial_used', trialUsed); }).catchError((_) {});
   }
 }

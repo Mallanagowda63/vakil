@@ -7,6 +7,7 @@ import '../services/realtime_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/chat_format.dart';
 import 'active_consultation_chat_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// All chats: ongoing first, then by latest activity, with the last message,
 /// its time and an unread badge. Refreshes on chat events and on resume.
@@ -74,7 +75,7 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
         child: _error != null && chats == null
             ? ListView(children: [const SizedBox(height: 120), Center(child: Text(_error!)), Center(child: TextButton(onPressed: _load, child: const Text('Try again')))])
             : chats == null
-                ? const Center(child: CircularProgressIndicator())
+                ? const PageLoader()
                 : chats.isEmpty
                     ? ListView(children: const [SizedBox(height: 120), Center(child: Text('No chats yet. Accepted requests appear here.', style: TextStyle(color: AppColors.textSecondary)))])
                     : ListView.separated(

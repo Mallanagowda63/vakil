@@ -11,6 +11,7 @@ import 'lawyer_profile_screen.dart';
 import 'lawyers_screen.dart';
 import 'login_otp_screen.dart';
 import 'support_screen.dart';
+import '../widgets/app_loader.dart';
 
 /// The client's details from registration (name, language, phone, gender,
 /// Aadhaar, email, emergency contact) and profile photo, all editable. The
@@ -176,7 +177,7 @@ class _ProfileTabState extends State<ProfileTab> {
                     onLongPress: profile?.photoUrl == null ? null : () => showPhoto(context, profile!.photoUrl!, profile.fullName),
                     child: Stack(children: [
                       LawyerAvatar(name: profile?.fullName ?? '', photoUrl: profile?.photoUrl, radius: 44),
-                      if (_uploading) const Positioned.fill(child: CircularProgressIndicator()),
+                      if (_uploading) const Positioned.fill(child: Center(child: DotsLoader(size: 7))),
                       Positioned(
                         right: 0,
                         bottom: 0,

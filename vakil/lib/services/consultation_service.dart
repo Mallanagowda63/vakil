@@ -9,7 +9,11 @@ class ConsultationService {
   final ApiClient api;
   String? get _token => AuthService.instance.token;
 
-  Future<List<LawyerSummary>> lawyers() async => ((await api.get('/api/lawyers', token: _token))['items'] as List? ?? const [])
+  /// The last lawyer list from the server, so Home, Lawyers and Search can
+  /// show it at once and refresh in the background.
+  static List<LawyerSummary>? lastLawyers;
+
+  Future<List<LawyerSummary>> lawyers() async => lastLawyers = ((await api.get('/api/lawyers', token: _token))['items'] as List? ?? const [])
       .map((item) => LawyerSummary.fromJson(Map<String, dynamic>.from(item as Map))).toList();
 
   /// [consultationType] 'call' asks for a call: the chat opens on accept and the call starts.

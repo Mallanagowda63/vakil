@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import '../screens/login_otp_screen.dart';
+import 'app_keys.dart';
 import 'realtime_service.dart';
 
 class PartnerNetworkException implements Exception {
@@ -22,21 +24,37 @@ class PartnerAuthService {
   String? email;
 
   /// Restores a saved session; false means the lawyer must sign in again.
+  /// Opens with the saved session and waits at most 2.5 s for the server's
+  /// check; a slow or missing network keeps the lawyer signed in and the check
+  /// finishes in the background (signing out only if the server says so).
   Future<bool> restore() async {
+    final String? saved;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString('partner_auth_token');
+      saved = prefs.getString('partner_auth_token');
       if (saved == null) return false;
-      final res = await _call('GET', '/api/auth/session', token: saved);
       token = saved;
-      email = (res['user'] as Map?)?['email']?.toString() ?? prefs.getString('partner_email');
-      RealtimeService.instance.connect(saved);
-      return true;
-    } on PartnerNetworkException catch (error) {
-      if (error.statusCode == 401 || error.statusCode == 403) await logout();
-      return false;
+      email = prefs.getString('partner_email');
     } catch (_) {
       return false;
+    }
+    RealtimeService.instance.connect(saved);
+    final check = _checkSession(saved);
+    return check.timeout(const Duration(milliseconds: 2500), onTimeout: () => true);
+  }
+
+  Future<bool> _checkSession(String saved) async {
+    try {
+      final res = await _call('GET', '/api/auth/session', token: saved);
+      email = (res['user'] as Map?)?['email']?.toString() ?? email;
+      return true;
+    } on PartnerNetworkException catch (error) {
+      if (token != saved || (error.statusCode != 401 && error.statusCode != 403)) return true;
+      await logout();
+      navigatorKey.currentState?.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginOtpScreen()), (route) => false);
+      return false;
+    } catch (_) {
+      return true;
     }
   }
 
