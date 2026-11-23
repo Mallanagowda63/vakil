@@ -131,6 +131,15 @@ platformRouter.patch('/lawyers/me/payout-details', ...roles('lawyer'), async (re
   res.json({ payoutDetails: payoutDetailsOf(await getDb().collection('lawyers').findOne({ _id: req.user._id })) });
 });
 
+// PATCH /api/lawyers/me/practice { categories: [...] } (1 to 4 areas) from the profile.
+platformRouter.patch('/lawyers/me/practice', ...roles('lawyer'), async (req, res) => {
+  const list = [...new Set((Array.isArray(req.body.categories) ? req.body.categories : []).map((c) => String(c).trim().slice(0, 60)).filter(Boolean))];
+  if (!list.length || list.length > 4) return res.status(400).json({ error: 'Choose 1 to 4 practice areas' });
+  await getDb().collection('lawyers').updateOne({ _id: req.user._id }, { $set: { categories: list } });
+  await announceLawyer(req.user._id);
+  res.json({ categories: list });
+});
+
 // Partner App registration (Review & Submit): personal, advocate and bank
 // details go to the Admin Panel for verification. Files are not uploaded yet;
 // only whether a licence file was attached.

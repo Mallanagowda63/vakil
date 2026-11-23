@@ -9,7 +9,7 @@ import os from 'node:os';
 import Layer from 'express/lib/router/layer.js';
 import { connectDb, isDbConnected } from './db.js';
 import { authRouter } from './routes/auth.js';
-import { profileRouter, uploadsDir } from './routes/profile.js';
+import { avatarFromDb, profileRouter, uploadsDir } from './routes/profile.js';
 import { trialRouter } from './routes/trial.js';
 import { consultationRouter } from './routes/consultations.js';
 import { platformRouter } from './routes/platform.js';
@@ -51,6 +51,7 @@ const jsonBody = express.json();
 const largeBodies = ['/api/profile/photo', '/api/lawyers/me/documents'];
 const isLargeBody = (path) => largeBodies.includes(path) || /^\/api\/consultations\/[^/]+\/attachments$/.test(path);
 app.use((req, res, next) => isLargeBody(req.path) ? next() : jsonBody(req, res, next));
+app.use('/uploads/avatars', (req, res, next) => avatarFromDb(req, res, next).catch(next));
 app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', fallthrough: false }));
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

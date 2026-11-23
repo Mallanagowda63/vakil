@@ -45,7 +45,7 @@ class WalletTransaction {
     String money(Object? v) => (v as num?) == null ? '' : '₹${(v as num) == v.roundToDouble() ? v.toInt() : v.toStringAsFixed(2)}';
     return WalletTransaction(
       id: json['id'].toString(),
-      title: earning ? '${json['reason'] == 'call' ? 'Call' : 'Chat'} · $client' : json['type'] == 'payout' ? 'Payout' : 'Adjustment',
+      title: earning ? '${json['reason'] == 'call' ? 'Voice' : 'Chat'} · $client' : json['type'] == 'payout' ? 'Payout' : 'Adjustment',
       subtitle: earning ? 'Client paid ${money(json['gross'])} · commission ${money(json['commission'])}${json['note'] == null || json['note'] == '' ? '' : ' · ${json['note']}'}' : (json['note']?.toString() ?? ''),
       amount: amount,
       date: DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
@@ -71,6 +71,14 @@ class WalletController extends ChangeNotifier {
   double pendingPayouts = 0;
   double commissionPercent = 0;
   double minimumWithdrawal = 0;
+  // Earnings over time (India dates): last 7 days (today last), this week, this month.
+  List<({DateTime day, double amount})> last7Days = const [];
+  double todayEarnings = 0, weekEarnings = 0;
+  double monthNet = 0, monthGross = 0, monthCommission = 0, monthChat = 0, monthVoice = 0;
+  // Current prices per minute and finished consultations.
+  double chatRate = 0, voiceRate = 0;
+  int consultationsDone = 0;
+  bool loaded = false;
   bool autoSettlementEnabled = false;
 
   @override
@@ -96,6 +104,20 @@ class WalletController extends ChangeNotifier {
     pendingPayouts = money('pendingPayouts');
     commissionPercent = money('commissionPercent');
     minimumWithdrawal = money('minimumWithdrawal');
+    double num0(Object? v) => (v as num?)?.toDouble() ?? 0;
+    last7Days = (data['last7Days'] as List? ?? const []).map((raw) {
+      final m = Map<String, dynamic>.from(raw as Map);
+      return (day: DateTime.tryParse(m['date']?.toString() ?? '')?.toLocal() ?? DateTime.now(), amount: num0(m['amount']));
+    }).toList();
+    todayEarnings = num0((data['today'] as Map?)?['earnings']);
+    weekEarnings = money('weekEarnings');
+    final month = Map<String, dynamic>.from(data['month'] as Map? ?? const {});
+    monthNet = num0(month['net']); monthGross = num0(month['gross']); monthCommission = num0(month['commission']);
+    monthChat = num0(month['chat']); monthVoice = num0(month['voice']);
+    final rates = Map<String, dynamic>.from(data['rates'] as Map? ?? const {});
+    chatRate = num0(rates['chat']); voiceRate = num0(rates['voice']);
+    consultationsDone = (data['consultationsDone'] as num?)?.toInt() ?? 0;
+    loaded = true;
     if (data['payoutDetails'] is Map) _applyPayout(Map<String, dynamic>.from(data['payoutDetails'] as Map));
     transactions
       ..clear()

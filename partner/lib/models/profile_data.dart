@@ -39,6 +39,9 @@ class ProfileController extends ChangeNotifier {
   String bio = '';
   /// Years of practice; empty until the lawyer adds it. Legal Saathi shows it to clients.
   String experienceYears = '';
+  /// Chamber / office address shown on the partner card.
+  String address = '';
+  bool barCouncilVerified = false, hasLicence = false, hasFacePhoto = false, hasPayout = false;
   List<String> categories = const [];
   String verificationStatus = '';
 
@@ -72,7 +75,8 @@ class ProfileController extends ChangeNotifier {
     loaded = false;
     photo = null;
     photoUrl = null;
-    name = email = phone = gender = dateOfBirth = barCouncilRegNo = practiceArea = location = court = languages = bio = experienceYears = verificationStatus = '';
+    name = email = phone = gender = dateOfBirth = barCouncilRegNo = practiceArea = location = court = languages = bio = experienceYears = verificationStatus = address = '';
+    barCouncilVerified = hasLicence = hasFacePhoto = hasPayout = false;
     categories = const [];
     notifyListeners();
   }
@@ -93,6 +97,11 @@ class ProfileController extends ChangeNotifier {
     experienceYears = p['experienceYears']?.toString() ?? '';
     categories = (p['categories'] as List? ?? const []).map((c) => c.toString()).toList();
     verificationStatus = p['verificationStatus']?.toString() ?? '';
+    address = p['address']?.toString() ?? '';
+    barCouncilVerified = p['barCouncilVerified'] == true;
+    hasLicence = p['hasLicence'] == true;
+    hasFacePhoto = p['hasFacePhoto'] == true;
+    hasPayout = p['hasPayout'] == true;
     loaded = true;
     error = null;
   }
@@ -111,7 +120,15 @@ class ProfileController extends ChangeNotifier {
     }
   }
 
-  /// Saves one or more fields (fullName, email, gender, bio, city, languages).
+  /// Practice areas (1 to 4) shown to clients.
+  Future<void> setCategories(List<String> list) async {
+    final token = PartnerAuthService.instance.token;
+    if (token == null) throw const PartnerNetworkException('Please sign in again');
+    categories = await _service.setPractice(token, list);
+    notifyListeners();
+  }
+
+  /// Saves one or more fields (fullName, email, gender, bio, city, languages, address, court, experienceYears).
   /// Throws [PartnerNetworkException] with the server's message on failure.
   Future<void> update(Map<String, String> fields) async {
     final token = PartnerAuthService.instance.token;

@@ -28,7 +28,7 @@ export function profileView(account, role) {
   const a = reg.advocate || {};
   return {
     ...base, dateOfBirth: reg.personal?.dateOfBirth || '', bio: p.bio || '',
-    barCouncilRegNo: a.barCouncilRegNo || '', practiceArea: a.practiceArea || (account.categories || [])[0] || '', city: p.city || a.city || '', court: a.court || '', languages: p.languages || a.languages || '',
+    barCouncilRegNo: a.barCouncilRegNo || '', barCouncilVerified: Boolean(a.barCouncilVerifiedAt), address: p.address || '', hasLicence: Boolean(account.documents?.license), hasFacePhoto: Boolean(account.documents?.face), hasPayout: Boolean(reg.bank?.upi || reg.bank?.accountNumber), practiceArea: a.practiceArea || (account.categories || [])[0] || '', city: p.city || a.city || '', court: p.court || a.court || '', languages: p.languages || a.languages || '',
     experienceYears: p.experienceYears ?? null, rejectionReason: account.verificationStatus === 'rejected' ? account.rejectionReason || '' : '',
     categories: account.categories || [], verificationStatus: account.blocked ? 'suspended' : account.approved ? 'approved' : account.verificationStatus === 'rejected' ? 'rejected' : account.registration?.submittedAt ? 'under_review' : 'not_submitted',
   };
@@ -89,7 +89,21 @@ profileRouter.post('/', requireAuth, async (req, res) => {
 
 // PATCH /api/profile — edits from the Profile / Settings screens (either app).
 // Only the fields sent change; the name can't be blanked.
-const editable = { user: ['fullName', 'language', 'gender', 'aadhaar', 'email', 'sosContact'], lawyer: ['fullName', 'email', 'gender', 'bio', 'city', 'languages'] };
+const editable = { user: ['fullName', 'language', 'gender', 'aadhaar', 'email', 'sosContact'], lawyer: ['fullName', 'email', 'gender', 'bio', 'city', 'languages', 'address', 'court'] };
+const removeAvatar = (file) => {
+  unlink(path.join(avatarsDir, file)).catch(() => {});
+  getDb().collection('avatars').deleteOne({ file }).catch(() => {});
+};
+
+/** Serves a profile photo from MongoDB when this server's disk no longer has it. */
+export async function avatarFromDb(req, res, next) {
+  const file = path.basename(req.path);
+  const found = await getDb().collection('avatars').findOne({ file }).catch(() => null);
+  if (!found) return next();
+  res.set({ 'Content-Type': found.contentType, 'Cache-Control': 'public, max-age=604800' });
+  res.end(Buffer.isBuffer(found.data) ? found.data : Buffer.from(found.data.buffer ?? found.data));
+}
+
 profileRouter.patch('/', requireAuth, async (req, res) => {
   const fields = {};
   for (const key of editable[req.auth.role] || []) if (key in req.body) fields[key] = text(req.body[key], key === 'bio' ? 1000 : 120);
@@ -125,15 +139,16 @@ profileRouter.post('/photo', express.json({ limit: '8mb' }), requireAuth, async 
   await mkdir(avatarsDir, { recursive: true });
   const file = `${req.auth.role}-${req.user._id}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
   await writeFile(path.join(avatarsDir, file), bytes);
+  await getDb().collection('avatars').insertOne({ file, contentType: req.body.contentType in imageTypes ? req.body.contentType : 'image/jpeg', data: bytes, createdAt: new Date() });
   const previous = req.user.profile?.photoUrl;
   const account = await setProfile(req, { photoUrl: `/uploads/avatars/${file}` });
-  if (previous?.startsWith('/uploads/avatars/')) unlink(path.join(avatarsDir, path.basename(previous))).catch(() => {});
+  if (previous?.startsWith('/uploads/avatars/')) removeAvatar(path.basename(previous));
   res.json({ photoUrl: account.profile.photoUrl, profile: profileView(account, req.auth.role) });
 });
 
 profileRouter.delete('/photo', requireAuth, async (req, res) => {
   const previous = req.user.profile?.photoUrl;
   const account = await setProfile(req, { photoUrl: null });
-  if (previous?.startsWith('/uploads/avatars/')) unlink(path.join(avatarsDir, path.basename(previous))).catch(() => {});
+  if (previous?.startsWith('/uploads/avatars/')) removeAvatar(path.basename(previous));
   res.json({ photoUrl: null, profile: profileView(account, req.auth.role) });
 });

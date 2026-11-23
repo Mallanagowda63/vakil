@@ -41,6 +41,14 @@ class PartnerConsultationService {
 
   /// Feedback after a chat or call: the lawyer rates the client.
   Future<Map<String, dynamic>> review(String id, String token, int rating, String comment) => _post('/api/consultations/$id/review', token, {'rating': rating, 'comment': comment});
+  /// The lawyer's requests with one status (e.g. REJECTED), newest first.
+  Future<List<Map<String, dynamic>>> history(String token, String status) async =>
+      ((await _get('/api/consultations?status=$status&limit=50', token))['items'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  /// The lawyer's own chat price per minute (within the admin's limits).
+  Future<double> setRate(String token, double ratePerMinute) async => ((await _patch('/api/lawyers/me/rate', token, {'ratePerMinute': ratePerMinute}))['ratePerMinute'] as num).toDouble();
+  /// Practice areas shown to clients (1 to 4).
+  Future<List<String>> setPractice(String token, List<String> categories) async =>
+      ((await _patch('/api/lawyers/me/practice', token, {'categories': categories}))['categories'] as List).map((e) => e.toString()).toList();
   /// A help request to the Vakil team; returns the ticket number.
   Future<String> contactSupport(String token, {required String topic, required String message}) async =>
       (await _post('/api/support', token, {'topic': topic, 'message': message}))['ticket'].toString();

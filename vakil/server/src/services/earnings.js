@@ -2,7 +2,7 @@ import { getDb } from '../db.js';
 import { emitAdmin, emitTo } from '../realtime.js';
 import { getSetting } from '../routes/adminOps.js';
 import { startOfToday } from './adminData.js';
-import { round2 } from './wallet.js';
+import { callRateOf, rateOf, round2 } from './wallet.js';
 
 // The lawyer's side of every charge: what the client paid for a chat or call,
 // minus the platform commission (Admin → Commission, or the lawyer's own
@@ -39,6 +39,25 @@ export const payoutDetailsOf = (lawyer) => {
   return { holderName: b.holderName || '', ifsc: b.ifsc || '', accountLast4: account ? account.slice(-4) : '', upi: b.upi || '' };
 };
 
+// Earnings per day for the last 7 days (today last), this week (Mon-Sun) and
+// this month, and this month split by chat and voice; dates are India time
+// (the server runs on Asia/Kolkata, see timezone.js).
+function periodTotals(earnings, requests) {
+  const day = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+  const today = day(Date.now());
+  const last7 = Array.from({ length: 7 }, (_, i) => today - (6 - i) * 86400000);
+  const weekStart = new Date(today); weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const monthStart = new Date(today); monthStart.setDate(1);
+  const typeOf = new Map(requests.map((r) => [r._id.toString(), r.consultationType === 'call' ? 'voice' : 'chat']));
+  const month = earnings.filter((e) => new Date(e.createdAt) >= monthStart);
+  const byType = (t) => round2(sum(month.filter((e) => (typeOf.get(e.requestId?.toString()) || 'chat') === t), (e) => e.amount));
+  return {
+    last7Days: last7.map((d) => ({ date: new Date(d).toISOString(), amount: round2(sum(earnings.filter((e) => day(e.createdAt) === d), (e) => e.amount)) })),
+    weekEarnings: round2(sum(earnings.filter((e) => new Date(e.createdAt) >= weekStart), (e) => e.amount)),
+    month: { net: round2(sum(month, (e) => e.amount)), gross: round2(sum(month, (e) => e.gross ?? e.amount)), commission: round2(sum(month, (e) => e.commission || 0)), chat: byType('chat'), voice: byType('voice') },
+  };
+}
+
 export async function earningsSummary(lawyerId) {
   const db = getDb(); const since = startOfToday(); const isToday = (d) => d && new Date(d) >= since;
   const [rows, payouts, requests, missedCalls, lawyer, payoutRules] = await Promise.all([
@@ -68,6 +87,9 @@ export async function earningsSummary(lawyerId) {
     balance, pendingPayouts: queued, available: Math.max(0, round2(balance - queued)),
     commissionPercent: await commissionPercentOf(lawyer), minimumWithdrawal: payoutRules.minimumWithdrawal,
     payoutDetails: payoutDetailsOf(lawyer),
+    ...periodTotals(earnings, requests),
+    rates: { chat: await rateOf(lawyer), voice: await callRateOf() },
+    consultationsDone: requests.filter((r) => r.status === 'COMPLETED').length,
     transactions: rows.slice(0, 50).map((r) => ({ id: r._id.toString(), type: r.type, reason: r.reason || null, amount: r.amount, gross: r.gross ?? null, commission: r.commission ?? null, clientName: r.clientName || null, note: r.note || '', status: r.status || 'settled', requestId: r.requestId?.toString() || null, createdAt: r.createdAt })),
   };
 }
