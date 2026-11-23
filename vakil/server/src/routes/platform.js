@@ -7,6 +7,7 @@ import { announceLawyer, emitAdmin } from '../realtime.js';
 import { earningsSummary, payoutDetailsOf, requestPayout } from '../services/earnings.js';
 import { barVerifiedAt, checkBarCode, sendBarCode } from '../services/barVerification.js';
 import { MAX_DOCUMENT_BYTES, documentKinds, documentTypes, saveDocument } from '../services/lawyerDocuments.js';
+import { useFacePhotoAsProfile } from './profile.js';
 
 export const platformRouter = Router();
 
@@ -74,6 +75,8 @@ platformRouter.post('/lawyers/me/documents', express.json({ limit: '8mb' }), ...
   if (bytes.length < 100) return res.status(400).json({ error: 'Choose a file to upload' });
   if (bytes.length > MAX_DOCUMENT_BYTES) return res.status(413).json({ error: 'The file is too large (5 MB at most)' });
   const document = await saveDocument({ lawyerId: req.user._id, kind, bytes, contentType, fileName: req.body.fileName });
+  // The onboarding selfie also becomes the profile photo (partner card, clients, Admin Panel).
+  if (kind === 'face') await useFacePhotoAsProfile(req.user, bytes, contentType).catch((e) => console.error('Face photo as profile photo failed:', e.message));
   emitAdmin('lawyer_status_changed', { id: req.user._id.toString() });
   res.status(201).json({ document });
 });

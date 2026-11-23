@@ -90,6 +90,50 @@ profileRouter.post('/', requireAuth, async (req, res) => {
 // PATCH /api/profile — edits from the Profile / Settings screens (either app).
 // Only the fields sent change; the name can't be blanked.
 const editable = { user: ['fullName', 'language', 'gender', 'aadhaar', 'email', 'sosContact'], lawyer: ['fullName', 'email', 'gender', 'bio', 'city', 'languages', 'address', 'court'] };
+/**
+ * Saves a profile photo and returns its link, "/uploads/avatars/<file>", which
+ * is what profile.photoUrl holds (users and lawyers). The bytes are kept in
+ * MongoDB (avatars) as well as on disk, because the cloud disk is wiped on deploys.
+ */
+export async function storeAvatar(role, id, bytes, contentType) {
+  const type = contentType in imageTypes ? contentType : 'image/jpeg';
+  const file = `${role}-${id}-${crypto.randomBytes(4).toString('hex')}.${imageTypes[type]}`;
+  await mkdir(avatarsDir, { recursive: true });
+  await writeFile(path.join(avatarsDir, file), bytes).catch(() => {});
+  await getDb().collection('avatars').insertOne({ file, contentType: type, data: bytes, createdAt: new Date() });
+  return `/uploads/avatars/${file}`;
+}
+
+/**
+ * The selfie a lawyer takes in onboarding (face verification) becomes their
+ * profile photo when they have none yet: it shows on the partner card, to
+ * clients and in the Admin Panel.
+ */
+export async function useFacePhotoAsProfile(lawyer, bytes, contentType) {
+  if (lawyer.profile?.photoUrl || lawyer.facePhotoCopiedAt || !String(contentType).startsWith('image/')) return null;
+  const photoUrl = await storeAvatar('lawyer', lawyer._id, bytes, contentType);
+  const profile = { ...(lawyer.profile || {}), photoUrl, updatedAt: new Date() };
+  // facePhotoCopiedAt: done once, so a lawyer who later removes the photo keeps it removed.
+  await getDb().collection('lawyers').updateOne({ _id: lawyer._id }, { $set: { profile, facePhotoCopiedAt: new Date() } });
+  await syncConsultations('lawyer', lawyer._id, { photoUrl });
+  return photoUrl;
+}
+
+/** Once at start-up: lawyers who sent a face photo before this existed get it as their photo. */
+export async function facePhotosToProfiles() {
+  const db = getDb();
+  const lawyers = await db.collection('lawyers').find({ 'documents.face': { $exists: true }, facePhotoCopiedAt: { $exists: false } }).project({ profile: 1, facePhotoCopiedAt: 1 }).toArray();
+  let done = 0;
+  for (const lawyer of lawyers.filter((l) => !l.profile?.photoUrl)) {
+    const doc = await db.collection('lawyer_documents').findOne({ lawyerId: lawyer._id, kind: 'face' });
+    if (!doc?.data) continue;
+    const bytes = Buffer.isBuffer(doc.data) ? doc.data : Buffer.from(doc.data.buffer ?? doc.data);
+    if (await useFacePhotoAsProfile(lawyer, bytes, doc.contentType)) done++;
+  }
+  if (done) console.log(`[PHOTOS] ${done} lawyer face photo(s) set as profile photos`);
+  return done;
+}
+
 const removeAvatar = (file) => {
   unlink(path.join(avatarsDir, file)).catch(() => {});
   getDb().collection('avatars').deleteOne({ file }).catch(() => {});
@@ -131,17 +175,12 @@ profileRouter.patch('/', requireAuth, async (req, res) => {
 // POST /api/profile/photo { image: <base64>, contentType } — replaces the photo.
 // DELETE /api/profile/photo removes it (initials are shown instead).
 profileRouter.post('/photo', express.json({ limit: '8mb' }), requireAuth, async (req, res) => {
-  const ext = imageTypes[req.body.contentType] || 'jpg';
   let bytes;
   try { bytes = Buffer.from(String(req.body.image || ''), 'base64'); } catch { bytes = Buffer.alloc(0); }
   if (bytes.length < 100) return res.status(400).json({ error: 'Choose a photo to upload' });
   if (bytes.length > 5 * 1024 * 1024) return res.status(413).json({ error: 'The photo is too large (5 MB at most)' });
-  await mkdir(avatarsDir, { recursive: true });
-  const file = `${req.auth.role}-${req.user._id}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
-  await writeFile(path.join(avatarsDir, file), bytes);
-  await getDb().collection('avatars').insertOne({ file, contentType: req.body.contentType in imageTypes ? req.body.contentType : 'image/jpeg', data: bytes, createdAt: new Date() });
   const previous = req.user.profile?.photoUrl;
-  const account = await setProfile(req, { photoUrl: `/uploads/avatars/${file}` });
+  const account = await setProfile(req, { photoUrl: await storeAvatar(req.auth.role, req.user._id, bytes, req.body.contentType) });
   if (previous?.startsWith('/uploads/avatars/')) removeAvatar(path.basename(previous));
   res.json({ photoUrl: account.profile.photoUrl, profile: profileView(account, req.auth.role) });
 });

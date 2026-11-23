@@ -96,7 +96,9 @@ export function Toggle({ checked, onChange, disabled }) {
   return <button type="button" role="switch" aria-checked={checked} disabled={disabled} className={`ld-toggle ${checked ? 'on' : ''}`} onClick={() => onChange(!checked)}><i /></button>;
 }
 
-export const Person = ({ name, sub, photo }) => <div className="person">{photo ? <img className="avatar" src={photo} alt="" /> : <span className="avatar light">{initials(name)}</span>}<span><b>{name}</b>{sub && <small>{sub}</small>}</span></div>;
+// Profile photo links are stored as "/uploads/avatars/<file>" on the API server, not this site.
+export const photoSrc = (photo) => (photo && photo.startsWith('/') ? `${baseUrl}${photo}` : photo);
+export const Person = ({ name, sub, photo }) => <div className="person">{photo ? <img className="avatar" src={photoSrc(photo)} alt="" /> : <span className="avatar light">{initials(name)}</span>}<span><b>{name}</b>{sub && <small>{sub}</small>}</span></div>;
 
 export function Bars({ data, value, format = number, labelKey = 'label', height = 150 }) {
   const max = Math.max(1, ...data.map(value));

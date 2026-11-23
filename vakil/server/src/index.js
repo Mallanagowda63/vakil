@@ -9,7 +9,7 @@ import os from 'node:os';
 import Layer from 'express/lib/router/layer.js';
 import { connectDb, isDbConnected } from './db.js';
 import { authRouter } from './routes/auth.js';
-import { avatarFromDb, profileRouter, uploadsDir } from './routes/profile.js';
+import { avatarFromDb, facePhotosToProfiles, profileRouter, uploadsDir } from './routes/profile.js';
 import { trialRouter } from './routes/trial.js';
 import { consultationRouter } from './routes/consultations.js';
 import { platformRouter } from './routes/platform.js';
@@ -99,6 +99,7 @@ server.listen(port, '0.0.0.0', () => {
 connectDb()
   .then(() => {
     console.log('MongoDB connected');
+    facePhotosToProfiles().catch((e) => console.error('Face photos:', e.message));
     setInterval(() => expirePending().catch(console.error), 1000).unref();
     setInterval(() => endTimedOutChats().catch(console.error), 1000).unref();
     setInterval(() => missUnansweredCalls().catch(console.error), 1000).unref();
