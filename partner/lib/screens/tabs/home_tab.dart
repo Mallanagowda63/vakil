@@ -7,6 +7,7 @@ import '../../models/theme_controller.dart';
 import '../../models/wallet_data.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/law_points.dart';
+import '../law_book_screen.dart';
 import '../../widgets/lt_ui.dart';
 import '../../widgets/metal_card.dart';
 import 'partner_nav.dart';
@@ -123,7 +124,7 @@ class HomeTab extends StatelessWidget {
               builder: (context, _) => _Tile(icon: Icons.event_note_outlined, title: 'Session book', text: SessionBook.instance.thisWeek == 1 ? '1 session this week' : '${SessionBook.instance.thisWeek} sessions this week', onTap: () => PartnerNav.openConsults(seg: 'sessions')),
             )),
             const SizedBox(width: 10),
-            Expanded(child: _Tile(icon: Icons.menu_book_outlined, title: 'Law points', text: 'Key sections by category', onTap: () => showLawPoints(context, categoryOf(profile.categories.isNotEmpty ? profile.categories.first : profile.practiceArea)))),
+            Expanded(child: _Tile(icon: Icons.menu_book_outlined, title: 'Law points', text: 'IPC → BNS, CrPC → BNSS, Evidence → BSA', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LawBookScreen(category: categoryOf(profile.categories.isNotEmpty ? profile.categories.first : profile.practiceArea)))))),
           ]),
         ],
       ),

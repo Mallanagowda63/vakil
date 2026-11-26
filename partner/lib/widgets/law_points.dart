@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
+import '../screens/law_book_screen.dart';
 import 'lt_ui.dart';
 
 /// Law categories used for filters, practice areas and Law points.
@@ -119,84 +120,123 @@ class LawPointsButton extends StatelessWidget {
   }
 }
 
-Future<void> showLawPoints(BuildContext context, String category) {
-  var selected = _law.containsKey(category) ? category : 'Criminal';
-  return showLtSheet(context, title: 'Law points', builder: (sheetContext) => StatefulBuilder(builder: (context, setState) {
-    final c = LT.of(context);
-    final law = _law[selected]!;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      SizedBox(
-        height: 38,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: lawCategories.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (_, i) {
-            final cat = lawCategories[i];
-            final on = cat.id == selected;
-            return GestureDetector(
-              onTap: () => setState(() => selected = cat.id),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: on ? c.brandSoft : c.surface, borderRadius: BorderRadius.circular(13), border: Border.all(color: on ? c.brand : c.line)),
-                child: Text(cat.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: on ? c.brand : c.ink)),
-              ),
-            );
-          },
+/// The quick guide for one law category: key sections, what to tell the client,
+/// documents to ask for. Used in the Law points sheet and the Law points screen.
+class LawPointsGuide extends StatefulWidget {
+  const LawPointsGuide({super.key, required this.category});
+  final String category;
+  @override
+  State<LawPointsGuide> createState() => _LawPointsGuideState();
+}
+
+class _LawPointsGuideState extends State<LawPointsGuide> {
+  late String _selected = _law.containsKey(widget.category) ? widget.category : 'Criminal';
+
+  @override
+  Widget build(BuildContext context) {
+      final c = LT.of(context);
+      final law = _law[_selected]!;
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: lawCategories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final cat = lawCategories[i];
+              final on = cat.id == _selected;
+              return GestureDetector(
+                onTap: () => setState(() => _selected = cat.id),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: on ? c.brandSoft : c.surface, borderRadius: BorderRadius.circular(13), border: Border.all(color: on ? c.brand : c.line)),
+                  child: Text(cat.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: on ? c.brand : c.ink)),
+                ),
+              );
+            },
+          ),
         ),
-      ),
-      const SizedBox(height: 10),
-      Text(law.acts, style: TextStyle(fontSize: 12, color: c.muted, height: 1.5)),
-      const SizedBox(height: 12),
-      Container(
-        decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
-        child: Column(children: [
-          for (var i = 0; i < law.points.length; i++)
+        const SizedBox(height: 10),
+        Text(law.acts, style: TextStyle(fontSize: 12, color: c.muted, height: 1.5)),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
+          child: Column(children: [
+            for (var i = 0; i < law.points.length; i++)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(border: i == 0 ? null : Border(top: BorderSide(color: c.line))),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(width: 100, child: Text(law.points[i].$1, style: mono(11.5, color: c.brand))),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(law.points[i].$2, style: TextStyle(fontSize: 13, height: 1.45, color: c.ink))),
+                ]),
+              ),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: c.brandSoft, borderRadius: BorderRadius.circular(16)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Eyebrow('Tell the client', color: c.brand),
+            const SizedBox(height: 6),
+            Text(law.say, style: TextStyle(fontSize: 13.5, height: 1.5, color: c.ink)),
+            const SizedBox(height: 12),
+            SizedBox(width: double.infinity, child: LtButton('Copy for the chat', icon: Icons.copy_rounded, onTap: () async {
+              await Clipboard.setData(ClipboardData(text: law.say));
+              if (context.mounted) toast(context, 'Copied. Paste it in the client chat');
+            })),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        const Eyebrow('Ask the client for'),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final d in law.docs)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(border: i == 0 ? null : Border(top: BorderSide(color: c.line))),
+              width: (MediaQuery.sizeOf(context).width - 44) / 2,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(color: c.surface2, borderRadius: BorderRadius.circular(10)),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                SizedBox(width: 100, child: Text(law.points[i].$1, style: mono(11.5, color: c.brand))),
-                const SizedBox(width: 8),
-                Expanded(child: Text(law.points[i].$2, style: TextStyle(fontSize: 13, height: 1.45, color: c.ink))),
+                Icon(Icons.check, size: 14, color: c.good),
+                const SizedBox(width: 6),
+                Expanded(child: Text(d, style: TextStyle(fontSize: 12.5, height: 1.35, color: c.ink))),
               ]),
             ),
         ]),
+        const SizedBox(height: 14),
+        Center(child: Text('Quick reference only. Check the current text and latest judgments before advising.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: c.muted))),
+      ]);
+  }
+}
+
+/// Opens Law points for a request or session: the quick guide, plus a way into
+/// the full Law Book (old IPC / CrPC / Evidence Act sections → BNS / BNSS / BSA).
+Future<void> showLawPoints(BuildContext context, String category) {
+  return showLtSheet(context, title: 'Law points', builder: (sheetContext) {
+    final c = LT.of(sheetContext);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      GestureDetector(
+        onTap: () {
+          Navigator.pop(sheetContext);
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => LawBookScreen(category: category)));
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.line)),
+          child: Row(children: [
+            Icon(Icons.search, color: c.muted),
+            const SizedBox(width: 10),
+            Expanded(child: Text('Search old → new sections (IPC → BNS, CrPC → BNSS, Evidence → BSA)', style: TextStyle(fontSize: 13, color: c.muted))),
+            Icon(Icons.chevron_right, color: c.muted),
+          ]),
+        ),
       ),
-      const SizedBox(height: 12),
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: c.brandSoft, borderRadius: BorderRadius.circular(16)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Eyebrow('Tell the client', color: c.brand),
-          const SizedBox(height: 6),
-          Text(law.say, style: TextStyle(fontSize: 13.5, height: 1.5, color: c.ink)),
-          const SizedBox(height: 12),
-          SizedBox(width: double.infinity, child: LtButton('Copy for the chat', icon: Icons.copy_rounded, onTap: () async {
-            await Clipboard.setData(ClipboardData(text: law.say));
-            if (context.mounted) toast(context, 'Copied. Paste it in the client chat');
-          })),
-        ]),
-      ),
-      const SizedBox(height: 16),
-      const Eyebrow('Ask the client for'),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final d in law.docs)
-          Container(
-            width: (MediaQuery.sizeOf(context).width - 44) / 2,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(color: c.surface2, borderRadius: BorderRadius.circular(10)),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.check, size: 14, color: c.good),
-              const SizedBox(width: 6),
-              Expanded(child: Text(d, style: TextStyle(fontSize: 12.5, height: 1.35, color: c.ink))),
-            ]),
-          ),
-      ]),
-      const SizedBox(height: 14),
-      Center(child: Text('Quick reference only. Check the current text and latest judgments before advising.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: c.muted))),
+      LawPointsGuide(category: category),
     ]);
-  }));
+  });
 }
